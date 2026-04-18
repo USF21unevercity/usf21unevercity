@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
-import { Building2, ChevronDown, ExternalLink, Search } from "lucide-react";
+import { Building2, ChevronDown, ExternalLink, Search, Plus, X, AlertTriangle } from "lucide-react";
 import channelsData from "@/data/channels.json";
 import { COLLEGES, normalizeCollege, normalizeLevel, LEVELS } from "@/lib/colleges";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 type Channel = { url: string; name: string; officialName: string; university: string; college: string; specialty: string; level: string };
 
@@ -14,6 +16,7 @@ const channels: Channel[] = (channelsData as Channel[]).map(c => ({
 export default function Colleges() {
   const [open, setOpen] = useState<string | null>(null);
   const [q, setQ] = useState("");
+  const [suggestType, setSuggestType] = useState<"new" | "wrong" | null>(null);
 
   const grouped = useMemo(() => {
     const map: Record<string, Channel[]> = {};
@@ -87,7 +90,101 @@ export default function Colleges() {
             );
           })}
         </div>
+
+        <div className="mt-12">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold text-foreground mb-1">ساهم في تطوير القنوات</h2>
+            <p className="text-muted-foreground text-sm">إذا وجدت قناة مفقودة أو في غير مكانها الصحيح، أبلغنا ليتم تحديثها</p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-4 max-w-3xl mx-auto">
+            <button onClick={() => setSuggestType("new")}
+              className="bg-card border border-border rounded-2xl p-5 text-right hover:shadow-glow transition-all flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-gold flex items-center justify-center shrink-0">
+                <Plus className="w-6 h-6 text-brand-purple-deep" />
+              </div>
+              <div>
+                <h3 className="font-bold text-foreground">إضافة قناة جديدة</h3>
+                <p className="text-xs text-muted-foreground mt-1">إذا وجدت قناة علمية مفقودة</p>
+              </div>
+            </button>
+            <button onClick={() => setSuggestType("wrong")}
+              className="bg-card border border-border rounded-2xl p-5 text-right hover:shadow-glow transition-all flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-purple flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6 text-brand-gold" />
+              </div>
+              <div>
+                <h3 className="font-bold text-foreground">قناة في غير مكانها</h3>
+                <p className="text-xs text-muted-foreground mt-1">إذا وجدت قناة في كلية غير صحيحة</p>
+              </div>
+            </button>
+          </div>
+        </div>
       </section>
+
+      {suggestType && <SuggestModal type={suggestType} onClose={() => setSuggestType(null)} />}
+    </div>
+  );
+}
+
+function SuggestModal({ type, onClose }: { type: "new" | "wrong"; onClose: () => void }) {
+  const [form, setForm] = useState({ channel_name: "", channel_url: "", college: "", level: "", specialty: "", suggester_name: "", notes: "" });
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.channel_name || !form.channel_url || !form.college) {
+      toast.error("يرجى تعبئة الحقول المطلوبة"); return;
+    }
+    setBusy(true);
+    const { error } = await supabase.from("channel_suggestions").insert({
+      suggestion_type: type,
+      channel_name: form.channel_name,
+      channel_url: form.channel_url,
+      college: form.college,
+      level: form.level || null,
+      specialty: form.specialty || null,
+      suggester_name: form.suggester_name || null,
+      notes: form.notes || null,
+    });
+    setBusy(false);
+    if (error) { toast.error("تعذر إرسال الاقتراح"); return; }
+    toast.success("تم إرسال الاقتراح، شكراً لمساهمتك");
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <form onSubmit={submit} onClick={e => e.stopPropagation()}
+        className="bg-card rounded-3xl p-6 max-w-lg w-full shadow-glow space-y-3 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-xl font-bold">{type === "new" ? "إضافة قناة جديدة" : "الإبلاغ عن قناة في غير مكانها"}</h3>
+          <button type="button" onClick={onClose}><X className="w-5 h-5" /></button>
+        </div>
+        <input required placeholder="اسم القناة *" value={form.channel_name} onChange={e => setForm({ ...form, channel_name: e.target.value })}
+          className="w-full px-4 py-2.5 rounded-xl border border-border bg-background" />
+        <input required placeholder="رابط القناة *" value={form.channel_url} onChange={e => setForm({ ...form, channel_url: e.target.value })}
+          className="w-full px-4 py-2.5 rounded-xl border border-border bg-background" dir="ltr" />
+        <select required value={form.college} onChange={e => setForm({ ...form, college: e.target.value })}
+          className="w-full px-4 py-2.5 rounded-xl border border-border bg-background">
+          <option value="">اختر الكلية *</option>
+          {COLLEGES.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select value={form.level} onChange={e => setForm({ ...form, level: e.target.value })}
+          className="w-full px-4 py-2.5 rounded-xl border border-border bg-background">
+          <option value="">المستوى (اختياري)</option>
+          {LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+        </select>
+        <input placeholder="التخصص (اختياري)" value={form.specialty} onChange={e => setForm({ ...form, specialty: e.target.value })}
+          className="w-full px-4 py-2.5 rounded-xl border border-border bg-background" />
+        <input placeholder="اسمك (اختياري)" value={form.suggester_name} onChange={e => setForm({ ...form, suggester_name: e.target.value })}
+          className="w-full px-4 py-2.5 rounded-xl border border-border bg-background" />
+        <textarea rows={2} placeholder="ملاحظات إضافية" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
+          className="w-full px-4 py-2.5 rounded-xl border border-border bg-background resize-none" />
+        <button type="submit" disabled={busy}
+          className="w-full bg-gradient-gold text-brand-purple-deep font-bold py-3 rounded-xl shadow-gold disabled:opacity-50">
+          {busy ? "جارٍ الإرسال..." : "إرسال الاقتراح"}
+        </button>
+      </form>
     </div>
   );
 }
