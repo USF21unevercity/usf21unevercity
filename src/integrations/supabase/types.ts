@@ -14,6 +14,168 @@ export type Database = {
   }
   public: {
     Tables: {
+      certificate_requests: {
+        Row: {
+          certificate_type: string
+          college: string
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          level: string
+          phone: string | null
+          reason: string
+          specialty: string | null
+          status: string
+        }
+        Insert: {
+          certificate_type: string
+          college: string
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          level: string
+          phone?: string | null
+          reason: string
+          specialty?: string | null
+          status?: string
+        }
+        Update: {
+          certificate_type?: string
+          college?: string
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          level?: string
+          phone?: string | null
+          reason?: string
+          specialty?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      channel_suggestions: {
+        Row: {
+          channel_name: string
+          channel_url: string
+          college: string
+          created_at: string
+          id: string
+          level: string | null
+          notes: string | null
+          specialty: string | null
+          status: string
+          suggester_name: string | null
+          suggestion_type: string
+        }
+        Insert: {
+          channel_name: string
+          channel_url: string
+          college: string
+          created_at?: string
+          id?: string
+          level?: string | null
+          notes?: string | null
+          specialty?: string | null
+          status?: string
+          suggester_name?: string | null
+          suggestion_type?: string
+        }
+        Update: {
+          channel_name?: string
+          channel_url?: string
+          college?: string
+          created_at?: string
+          id?: string
+          level?: string | null
+          notes?: string | null
+          specialty?: string | null
+          status?: string
+          suggester_name?: string | null
+          suggestion_type?: string
+        }
+        Relationships: []
+      }
+      contact_messages: {
+        Row: {
+          college: string
+          created_at: string
+          full_name: string
+          id: string
+          is_read: boolean
+          level: string
+          message: string
+          phone: string | null
+          specialty: string | null
+        }
+        Insert: {
+          college: string
+          created_at?: string
+          full_name: string
+          id?: string
+          is_read?: boolean
+          level: string
+          message: string
+          phone?: string | null
+          specialty?: string | null
+        }
+        Update: {
+          college?: string
+          created_at?: string
+          full_name?: string
+          id?: string
+          is_read?: boolean
+          level?: string
+          message?: string
+          phone?: string | null
+          specialty?: string | null
+        }
+        Relationships: []
+      }
+      library_files: {
+        Row: {
+          college: string
+          created_at: string
+          description: string | null
+          downloads: number
+          file_path: string | null
+          file_type: string | null
+          file_url: string
+          id: string
+          level: string
+          title: string
+          uploader_name: string | null
+        }
+        Insert: {
+          college: string
+          created_at?: string
+          description?: string | null
+          downloads?: number
+          file_path?: string | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          level: string
+          title: string
+          uploader_name?: string | null
+        }
+        Update: {
+          college?: string
+          created_at?: string
+          description?: string | null
+          downloads?: number
+          file_path?: string | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          level?: string
+          title?: string
+          uploader_name?: string | null
+        }
+        Relationships: []
+      }
       members: {
         Row: {
           college: string
