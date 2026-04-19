@@ -219,24 +219,32 @@ function Dashboard({ isOwner, collegeFilter }: { isOwner: boolean; collegeFilter
   );
 }
 
-function MembersTab() {
+function MembersTab({ isOwner, collegeFilter }: { isOwner: boolean; collegeFilter: string | null }) {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase.from("members").select("*").order("created_at", { ascending: false });
-    setMembers((data as Member[]) || []);
+    let query = supabase.from("members").select("*").order("created_at", { ascending: false });
+    if (collegeFilter) query = query.eq("college", collegeFilter);
+    const { data } = await query;
+    let list = (data as Member[]) || [];
+    // Sub-admin must NOT see female phone numbers (only owner sees them).
+    if (!isOwner) {
+      list = list.map(m => ({ ...m, phone: m.gender === "female" ? null : m.phone }));
+    }
+    setMembers(list);
     setLoading(false);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [collegeFilter, isOwner]);
 
   const filtered = useMemo(() =>
     members.filter(m => !q || m.full_name.toLowerCase().includes(q.toLowerCase()) || m.college.includes(q))
   , [members, q]);
 
   async function onDelete(id: string, name: string) {
+    if (!isOwner) { toast.error("غير مصرح بالحذف"); return; }
     if (!confirm(`هل تريد حذف العضو "${name}"؟`)) return;
     const { error } = await supabase.from("members").delete().eq("id", id);
     if (error) { toast.error("فشل الحذف"); return; }
