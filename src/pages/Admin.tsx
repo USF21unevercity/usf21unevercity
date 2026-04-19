@@ -146,8 +146,78 @@ function NotAuthorized() {
 
 type Counts = { messages: number; certs: number; suggestions: number; library: number };
 
-function Dashboard() {
-  const [tab, setTab] = useState<"members" | "messages" | "certs" | "suggestions" | "library">("members");
+function Dashboard({ isOwner, collegeFilter }: { isOwner: boolean; collegeFilter: string | null }) {
+  type TabId = "members" | "messages" | "certs" | "suggestions" | "library" | "admins";
+  const [tab, setTab] = useState<TabId>("members");
+  const [counts, setCounts] = useState<Counts>({ messages: 0, certs: 0, suggestions: 0, library: 0 });
+
+  useEffect(() => {
+    if (!isOwner) return;
+    (async () => {
+      const [m, c, s, l] = await Promise.all([
+        supabase.from("contact_messages").select("id", { count: "exact", head: true }),
+        supabase.from("certificate_requests").select("id", { count: "exact", head: true }),
+        supabase.from("channel_suggestions").select("id", { count: "exact", head: true }),
+        supabase.from("library_files").select("id", { count: "exact", head: true }),
+      ]);
+      setCounts({ messages: m.count || 0, certs: c.count || 0, suggestions: s.count || 0, library: l.count || 0 });
+    })();
+  }, [tab, isOwner]);
+
+  const allTabs = [
+    { id: "members" as const, label: "الأعضاء", icon: Users, count: null, owner: false },
+    { id: "messages" as const, label: "الرسائل", icon: Mail, count: counts.messages, owner: true },
+    { id: "certs" as const, label: "طلبات الشهادات", icon: Award, count: counts.certs, owner: true },
+    { id: "suggestions" as const, label: "اقتراحات قنوات", icon: Radio, count: counts.suggestions, owner: true },
+    { id: "library" as const, label: "المكتبة", icon: BookOpen, count: counts.library, owner: true },
+    { id: "admins" as const, label: "مشرفو الكليات", icon: Shield, count: null, owner: true },
+  ];
+  const tabs = allTabs.filter(t => isOwner || !t.owner);
+
+  return (
+    <div>
+      <section className="bg-hero text-white py-8 relative overflow-hidden">
+        <div className="absolute inset-0 star-bg opacity-50" />
+        <div className="container mx-auto px-4 flex items-center justify-between gap-3 flex-wrap relative">
+          <div className="flex items-center gap-3">
+            <Lock className="w-9 h-9 text-brand-gold" />
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold">{isOwner ? "لوحة مالك الموقع" : `لوحة مشرف كلية: ${collegeFilter}`}</h1>
+              <p className="text-white/80 text-sm">{isOwner ? "إدارة جميع بيانات الموقع" : "تظهر لك بيانات كليتك فقط"}</p>
+            </div>
+          </div>
+          <button onClick={() => supabase.auth.signOut()} className="bg-white/10 hover:bg-white/20 text-white font-bold px-4 py-2.5 rounded-xl flex items-center gap-2">
+            <LogOut className="w-4 h-4" /> خروج
+          </button>
+        </div>
+      </section>
+
+      <section className="container mx-auto px-4 py-6">
+        <div className="bg-card border border-border rounded-2xl p-2 mb-4 shadow-soft flex gap-1 overflow-x-auto">
+          {tabs.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
+                tab === t.id ? "bg-gradient-purple text-white shadow-glow" : "text-foreground hover:bg-secondary"
+              }`}>
+              <t.icon className="w-4 h-4" />
+              <span>{t.label}</span>
+              {t.count !== null && t.count > 0 && (
+                <span className={`text-xs px-2 py-0.5 rounded-full ${tab === t.id ? "bg-brand-gold text-brand-purple-deep" : "bg-primary/10 text-primary"}`}>{t.count}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {tab === "members" && <MembersTab isOwner={isOwner} collegeFilter={collegeFilter} />}
+        {tab === "messages" && isOwner && <MessagesTab />}
+        {tab === "certs" && isOwner && <CertsTab />}
+        {tab === "suggestions" && isOwner && <SuggestionsTab />}
+        {tab === "library" && isOwner && <LibraryTab />}
+        {tab === "admins" && isOwner && <CollegeAdminsTab />}
+      </section>
+    </div>
+  );
+}
   const [counts, setCounts] = useState<Counts>({ messages: 0, certs: 0, suggestions: 0, library: 0 });
 
   useEffect(() => {
