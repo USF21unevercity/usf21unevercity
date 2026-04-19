@@ -24,33 +24,38 @@ type Member = {
 export default function Admin() {
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [collegeAdmin, setCollegeAdmin] = useState<{ college: string; level: string | null } | null>(null);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+    const refresh = async (s: Session | null) => {
       setSession(s);
       if (s?.user) {
-        setTimeout(async () => {
-          const { data } = await supabase.rpc("has_role", { _user_id: s.user.id, _role: "admin" });
-          setIsAdmin(!!data);
-          setChecking(false);
-        }, 0);
+        const [{ data: roleData }, { data: caData }] = await Promise.all([
+          supabase.rpc("has_role", { _user_id: s.user.id, _role: "admin" }),
+          (supabase as any).from("college_admins").select("college, level").eq("user_id", s.user.id).maybeSingle(),
+        ]);
+        setIsAdmin(!!roleData);
+        setCollegeAdmin(caData ? { college: caData.college, level: caData.level } : null);
       } else {
         setIsAdmin(false);
-        setChecking(false);
+        setCollegeAdmin(null);
       }
+      setChecking(false);
+    };
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+      setTimeout(() => refresh(s), 0);
     });
     supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      if (!s) setChecking(false);
+      if (!s) setChecking(false); else refresh(s);
     });
     return () => subscription.unsubscribe();
   }, []);
 
   if (checking) return <div className="min-h-[60vh] flex items-center justify-center text-muted-foreground">جارٍ التحقق...</div>;
   if (!session) return <LoginForm />;
-  if (!isAdmin) return <NotAuthorized />;
-  return <Dashboard />;
+  if (!isAdmin && !collegeAdmin) return <NotAuthorized />;
+  return <Dashboard isOwner={isAdmin} collegeFilter={!isAdmin && collegeAdmin ? collegeAdmin.college : null} />;
 }
 
 function LoginForm() {
