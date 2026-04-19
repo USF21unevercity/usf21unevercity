@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Lock, LogOut, Trash2, Download, Search, Phone, Users, Mail, Award, Radio, BookOpen } from "lucide-react";
+import { Lock, LogOut, Trash2, Download, Search, Phone, Users, Mail, Award, Radio, BookOpen, Shield, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Session } from "@supabase/supabase-js";
+import { COLLEGES, LEVELS } from "@/lib/colleges";
 
 const ADMIN_EMAIL = "Wjhb29ytsbvk.wo@gmail.com";
 
