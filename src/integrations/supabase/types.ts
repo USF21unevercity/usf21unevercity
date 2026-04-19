@@ -98,6 +98,57 @@ export type Database = {
         }
         Relationships: []
       }
+      college_admin_invites: {
+        Row: {
+          college: string
+          created_at: string
+          email: string
+          id: string
+          level: string | null
+        }
+        Insert: {
+          college: string
+          created_at?: string
+          email: string
+          id?: string
+          level?: string | null
+        }
+        Update: {
+          college?: string
+          created_at?: string
+          email?: string
+          id?: string
+          level?: string | null
+        }
+        Relationships: []
+      }
+      college_admins: {
+        Row: {
+          college: string
+          created_at: string
+          email: string
+          id: string
+          level: string | null
+          user_id: string
+        }
+        Insert: {
+          college: string
+          created_at?: string
+          email: string
+          id?: string
+          level?: string | null
+          user_id: string
+        }
+        Update: {
+          college?: string
+          created_at?: string
+          email?: string
+          id?: string
+          level?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       contact_messages: {
         Row: {
           college: string
@@ -186,6 +237,7 @@ export type Database = {
           id: string
           join_year: string | null
           level: string
+          name_normalized: string | null
           notes: string | null
           phone: string | null
           specialty: string | null
@@ -199,6 +251,7 @@ export type Database = {
           id?: string
           join_year?: string | null
           level: string
+          name_normalized?: string | null
           notes?: string | null
           phone?: string | null
           specialty?: string | null
@@ -212,6 +265,7 @@ export type Database = {
           id?: string
           join_year?: string | null
           level?: string
+          name_normalized?: string | null
           notes?: string | null
           phone?: string | null
           specialty?: string | null
@@ -241,9 +295,45 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      members_public: {
+        Row: {
+          college: string | null
+          committee_role: string | null
+          created_at: string | null
+          full_name: string | null
+          gender: string | null
+          id: string | null
+          join_year: string | null
+          level: string | null
+          specialty: string | null
+        }
+        Insert: {
+          college?: string | null
+          committee_role?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          gender?: string | null
+          id?: string | null
+          join_year?: string | null
+          level?: string | null
+          specialty?: string | null
+        }
+        Update: {
+          college?: string | null
+          committee_role?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          gender?: string | null
+          id?: string | null
+          join_year?: string | null
+          level?: string | null
+          specialty?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      get_admin_college: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -251,6 +341,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_college_admin: { Args: { _user_id: string }; Returns: boolean }
+      normalize_arabic_name: { Args: { _name: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "user"
