@@ -23,7 +23,7 @@ export default function Layout() {
       <header className="sticky top-0 z-50 bg-brand-purple-deep/95 backdrop-blur-md border-b border-brand-gold/20">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
           <Link to="/" className="flex items-center gap-3 shrink-0">
-            <div className="w-12 h-12 rounded-xl bg-gradient-gold flex items-center justify-center shadow-gold font-extrabold text-brand-purple-deep text-lg">
+            <div translate="no" className="notranslate w-12 h-12 rounded-xl bg-gradient-gold flex items-center justify-center shadow-gold font-extrabold text-brand-purple-deep text-lg">
               USF
             </div>
             <div className="hidden sm:block text-right">
