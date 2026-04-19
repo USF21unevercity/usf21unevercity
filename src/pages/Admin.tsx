@@ -68,7 +68,15 @@ function LoginForm() {
     setLoading(true);
     let { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     if (error && /invalid login credentials/i.test(error.message)) {
-      // First-time: create the admin account
+      const emailLc = email.trim().toLowerCase();
+      const isOwnerEmail = emailLc === ADMIN_EMAIL.toLowerCase();
+      const { data: invite } = await (supabase as any)
+        .from("college_admin_invites").select("id").ilike("email", emailLc).maybeSingle();
+      if (!invite && !isOwnerEmail) {
+        setLoading(false);
+        toast.error("هذا البريد غير مصرح له بالدخول");
+        return;
+      }
       const { error: signUpErr } = await supabase.auth.signUp({
         email: email.trim(),
         password,
