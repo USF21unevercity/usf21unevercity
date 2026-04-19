@@ -33,7 +33,7 @@ export default function Index() {
         <div className="absolute inset-0 star-bg opacity-60" />
         <div className="container mx-auto px-4 py-16 md:py-24 relative">
           <div className="max-w-3xl mx-auto bg-white/5 backdrop-blur-sm border border-brand-gold/30 rounded-3xl p-6 mb-10 flex items-center gap-4 justify-center shadow-glow">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-gold flex items-center justify-center font-extrabold text-brand-purple-deep text-xl shrink-0">
+            <div translate="no" className="notranslate w-16 h-16 rounded-2xl bg-gradient-gold flex items-center justify-center font-extrabold text-brand-purple-deep text-xl shrink-0">
               USF
             </div>
             <div className="text-right">
@@ -42,7 +42,7 @@ export default function Index() {
             </div>
           </div>
 
-          <h1 className="text-center text-5xl md:text-7xl font-extrabold mb-12 tracking-tight">العلم نور</h1>
+          <h1 translate="no" className="notranslate text-center text-5xl md:text-7xl font-extrabold mb-12 tracking-tight">العلم نور</h1>
 
           {/* Verses */}
           <div className="max-w-4xl mx-auto bg-brand-purple/30 backdrop-blur border border-brand-gold/40 rounded-3xl p-6 md:p-10 shadow-glow mb-6">

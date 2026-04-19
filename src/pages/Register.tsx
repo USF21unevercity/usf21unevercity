@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { UserPlus, CheckCircle2 } from "lucide-react";
+import { UserPlus, CheckCircle2, AlertTriangle } from "lucide-react";
 import { COLLEGES, LEVELS, JOIN_YEARS } from "@/lib/colleges";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
+import { normalizeArabicName } from "@/lib/normalizeName";
 
 const schema = z.object({
   full_name: z.string().trim().min(3, "الاسم قصير جداً").max(120),
@@ -25,6 +26,7 @@ export default function Register() {
   });
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
 
   const update = (k: string, v: string) => setForm(prev => ({ ...prev, [k]: v }));
 
@@ -40,6 +42,18 @@ export default function Register() {
       return;
     }
     setLoading(true);
+    // Pre-check duplicate by normalized name across all colleges
+    const normalized = normalizeArabicName(parsed.data.full_name);
+    const { data: existing } = await supabase
+      .from("members")
+      .select("id")
+      .eq("name_normalized", normalized)
+      .maybeSingle();
+    if (existing) {
+      setLoading(false);
+      setAlreadyRegistered(true);
+      return;
+    }
     const { error } = await supabase.from("members").insert({
       full_name: parsed.data.full_name,
       college: parsed.data.college,
@@ -52,9 +66,35 @@ export default function Register() {
       notes: parsed.data.notes || null,
     });
     setLoading(false);
-    if (error) { toast.error("حدث خطأ: " + error.message); return; }
+    if (error) {
+      // 23505 = unique_violation (race condition)
+      if ((error as any).code === "23505" || /duplicate|unique/i.test(error.message)) {
+        setAlreadyRegistered(true);
+        return;
+      }
+      toast.error("حدث خطأ: " + error.message); return;
+    }
     setDone(true);
     toast.success("تم تسجيلك بنجاح في اللجنة العلمية 🎉");
+  }
+
+  if (alreadyRegistered) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center px-4 py-16">
+        <div className="bg-card border border-amber-300 rounded-3xl p-10 max-w-md w-full text-center shadow-card-elev">
+          <AlertTriangle className="w-20 h-20 text-amber-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2 text-foreground">عزيزي الطالب/ة</h2>
+          <p className="text-muted-foreground mb-6 leading-loose">
+            أنت لا يمكنك التسجيل في اللجنة العلمية فأنت مسجل من قبل.
+            <br />شكراً لك 🌹
+          </p>
+          <button onClick={() => { setAlreadyRegistered(false); }}
+            className="bg-gradient-purple text-white font-bold px-6 py-3 rounded-xl shadow-glow">
+            رجوع
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (done) {

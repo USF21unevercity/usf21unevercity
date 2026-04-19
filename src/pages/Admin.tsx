@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Lock, LogOut, Trash2, Download, Search, Phone, Users, Mail, Award, Radio, BookOpen } from "lucide-react";
+import { Lock, LogOut, Trash2, Download, Search, Phone, Users, Mail, Award, Radio, BookOpen, Shield, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Session } from "@supabase/supabase-js";
+import { COLLEGES, LEVELS } from "@/lib/colleges";
 
 const ADMIN_EMAIL = "Wjhb29ytsbvk.wo@gmail.com";
 
@@ -23,33 +24,38 @@ type Member = {
 export default function Admin() {
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [collegeAdmin, setCollegeAdmin] = useState<{ college: string; level: string | null } | null>(null);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+    const refresh = async (s: Session | null) => {
       setSession(s);
       if (s?.user) {
-        setTimeout(async () => {
-          const { data } = await supabase.rpc("has_role", { _user_id: s.user.id, _role: "admin" });
-          setIsAdmin(!!data);
-          setChecking(false);
-        }, 0);
+        const [{ data: roleData }, { data: caData }] = await Promise.all([
+          supabase.rpc("has_role", { _user_id: s.user.id, _role: "admin" }),
+          (supabase as any).from("college_admins").select("college, level").eq("user_id", s.user.id).maybeSingle(),
+        ]);
+        setIsAdmin(!!roleData);
+        setCollegeAdmin(caData ? { college: caData.college, level: caData.level } : null);
       } else {
         setIsAdmin(false);
-        setChecking(false);
+        setCollegeAdmin(null);
       }
+      setChecking(false);
+    };
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+      setTimeout(() => refresh(s), 0);
     });
     supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      if (!s) setChecking(false);
+      if (!s) setChecking(false); else refresh(s);
     });
     return () => subscription.unsubscribe();
   }, []);
 
   if (checking) return <div className="min-h-[60vh] flex items-center justify-center text-muted-foreground">جارٍ التحقق...</div>;
   if (!session) return <LoginForm />;
-  if (!isAdmin) return <NotAuthorized />;
-  return <Dashboard />;
+  if (!isAdmin && !collegeAdmin) return <NotAuthorized />;
+  return <Dashboard isOwner={isAdmin} collegeFilter={!isAdmin && collegeAdmin ? collegeAdmin.college : null} />;
 }
 
 function LoginForm() {
@@ -59,14 +65,18 @@ function LoginForm() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (email.trim().toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-      toast.error("هذا الإيميل غير مصرح له بالدخول");
-      return;
-    }
     setLoading(true);
     let { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     if (error && /invalid login credentials/i.test(error.message)) {
-      // First-time: create the admin account
+      const emailLc = email.trim().toLowerCase();
+      const isOwnerEmail = emailLc === ADMIN_EMAIL.toLowerCase();
+      const { data: invite } = await (supabase as any)
+        .from("college_admin_invites").select("id").ilike("email", emailLc).maybeSingle();
+      if (!invite && !isOwnerEmail) {
+        setLoading(false);
+        toast.error("هذا البريد غير مصرح له بالدخول");
+        return;
+      }
       const { error: signUpErr } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -136,11 +146,13 @@ function NotAuthorized() {
 
 type Counts = { messages: number; certs: number; suggestions: number; library: number };
 
-function Dashboard() {
-  const [tab, setTab] = useState<"members" | "messages" | "certs" | "suggestions" | "library">("members");
+function Dashboard({ isOwner, collegeFilter }: { isOwner: boolean; collegeFilter: string | null }) {
+  type TabId = "members" | "messages" | "certs" | "suggestions" | "library" | "admins";
+  const [tab, setTab] = useState<TabId>("members");
   const [counts, setCounts] = useState<Counts>({ messages: 0, certs: 0, suggestions: 0, library: 0 });
 
   useEffect(() => {
+    if (!isOwner) return;
     (async () => {
       const [m, c, s, l] = await Promise.all([
         supabase.from("contact_messages").select("id", { count: "exact", head: true }),
@@ -150,15 +162,17 @@ function Dashboard() {
       ]);
       setCounts({ messages: m.count || 0, certs: c.count || 0, suggestions: s.count || 0, library: l.count || 0 });
     })();
-  }, [tab]);
+  }, [tab, isOwner]);
 
-  const tabs = [
-    { id: "members", label: "الأعضاء", icon: Users, count: null },
-    { id: "messages", label: "الرسائل", icon: Mail, count: counts.messages },
-    { id: "certs", label: "طلبات الشهادات", icon: Award, count: counts.certs },
-    { id: "suggestions", label: "اقتراحات قنوات", icon: Radio, count: counts.suggestions },
-    { id: "library", label: "المكتبة", icon: BookOpen, count: counts.library },
-  ] as const;
+  const allTabs = [
+    { id: "members" as const, label: "الأعضاء", icon: Users, count: null, owner: false },
+    { id: "messages" as const, label: "الرسائل", icon: Mail, count: counts.messages, owner: true },
+    { id: "certs" as const, label: "طلبات الشهادات", icon: Award, count: counts.certs, owner: true },
+    { id: "suggestions" as const, label: "اقتراحات قنوات", icon: Radio, count: counts.suggestions, owner: true },
+    { id: "library" as const, label: "المكتبة", icon: BookOpen, count: counts.library, owner: true },
+    { id: "admins" as const, label: "مشرفو الكليات", icon: Shield, count: null, owner: true },
+  ];
+  const tabs = allTabs.filter(t => isOwner || !t.owner);
 
   return (
     <div>
@@ -168,8 +182,8 @@ function Dashboard() {
           <div className="flex items-center gap-3">
             <Lock className="w-9 h-9 text-brand-gold" />
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold">لوحة المشرفين</h1>
-              <p className="text-white/80 text-sm">إدارة جميع بيانات الموقع</p>
+              <h1 className="text-2xl md:text-3xl font-bold">{isOwner ? "لوحة مالك الموقع" : `لوحة مشرف كلية: ${collegeFilter}`}</h1>
+              <p className="text-white/80 text-sm">{isOwner ? "إدارة جميع بيانات الموقع" : "تظهر لك بيانات كليتك فقط"}</p>
             </div>
           </div>
           <button onClick={() => supabase.auth.signOut()} className="bg-white/10 hover:bg-white/20 text-white font-bold px-4 py-2.5 rounded-xl flex items-center gap-2">
@@ -194,34 +208,43 @@ function Dashboard() {
           ))}
         </div>
 
-        {tab === "members" && <MembersTab />}
-        {tab === "messages" && <MessagesTab />}
-        {tab === "certs" && <CertsTab />}
-        {tab === "suggestions" && <SuggestionsTab />}
-        {tab === "library" && <LibraryTab />}
+        {tab === "members" && <MembersTab isOwner={isOwner} collegeFilter={collegeFilter} />}
+        {tab === "messages" && isOwner && <MessagesTab />}
+        {tab === "certs" && isOwner && <CertsTab />}
+        {tab === "suggestions" && isOwner && <SuggestionsTab />}
+        {tab === "library" && isOwner && <LibraryTab />}
+        {tab === "admins" && isOwner && <CollegeAdminsTab />}
       </section>
     </div>
   );
 }
 
-function MembersTab() {
+function MembersTab({ isOwner, collegeFilter }: { isOwner: boolean; collegeFilter: string | null }) {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase.from("members").select("*").order("created_at", { ascending: false });
-    setMembers((data as Member[]) || []);
+    let query = supabase.from("members").select("*").order("created_at", { ascending: false });
+    if (collegeFilter) query = query.eq("college", collegeFilter);
+    const { data } = await query;
+    let list = (data as Member[]) || [];
+    // Sub-admin must NOT see female phone numbers (only owner sees them).
+    if (!isOwner) {
+      list = list.map(m => ({ ...m, phone: m.gender === "female" ? null : m.phone }));
+    }
+    setMembers(list);
     setLoading(false);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [collegeFilter, isOwner]);
 
   const filtered = useMemo(() =>
     members.filter(m => !q || m.full_name.toLowerCase().includes(q.toLowerCase()) || m.college.includes(q))
   , [members, q]);
 
   async function onDelete(id: string, name: string) {
+    if (!isOwner) { toast.error("غير مصرح بالحذف"); return; }
     if (!confirm(`هل تريد حذف العضو "${name}"؟`)) return;
     const { error } = await supabase.from("members").delete().eq("id", id);
     if (error) { toast.error("فشل الحذف"); return; }
@@ -279,7 +302,7 @@ function MembersTab() {
                   <td className="p-3">{m.gender === "male" ? "ذكر" : "أنثى"}</td>
                   <td className="p-3">{m.phone ? <a href={`tel:${m.phone}`} className="text-primary flex items-center gap-1"><Phone className="w-3 h-3" />{m.phone}</a> : "-"}</td>
                   <td className="p-3">{m.committee_role || "-"}</td>
-                  <td className="p-3"><DeleteBtn onClick={() => onDelete(m.id, m.full_name)} /></td>
+                  <td className="p-3">{isOwner ? <DeleteBtn onClick={() => onDelete(m.id, m.full_name)} /> : null}</td>
                 </tr>
               ))}
             </tbody>
@@ -458,4 +481,131 @@ function downloadCsv(name: string, headers: string[], rows: any[][]) {
   a.click();
   URL.revokeObjectURL(url);
   toast.success("تم تنزيل الملف");
+}
+
+function CollegeAdminsTab() {
+  const [list, setList] = useState<any[]>([]);
+  const [invites, setInvites] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ email: "", college: "", level: "" });
+  const [adding, setAdding] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    const [a, i] = await Promise.all([
+      (supabase as any).from("college_admins").select("*").order("created_at", { ascending: false }),
+      (supabase as any).from("college_admin_invites").select("*").order("created_at", { ascending: false }),
+    ]);
+    setList(a.data || []);
+    setInvites(i.data || []);
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+
+  async function add(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.email || !form.college) { toast.error("الإيميل والكلية مطلوبان"); return; }
+    setAdding(true);
+    const { error } = await (supabase as any).from("college_admin_invites").insert({
+      email: form.email.trim().toLowerCase(),
+      college: form.college,
+      level: form.level || null,
+    });
+    setAdding(false);
+    if (error) { toast.error("فشل: " + error.message); return; }
+    toast.success("تمت إضافة المشرف. يستطيع الدخول الآن بالإيميل وكلمة المرور.");
+    setForm({ email: "", college: "", level: "" });
+    load();
+  }
+
+  async function removeInvite(id: string) {
+    if (!confirm("حذف الدعوة؟")) return;
+    await (supabase as any).from("college_admin_invites").delete().eq("id", id);
+    setInvites(p => p.filter(x => x.id !== id));
+  }
+  async function removeAdmin(id: string) {
+    if (!confirm("إلغاء صلاحيات هذا المشرف؟")) return;
+    await (supabase as any).from("college_admins").delete().eq("id", id);
+    setList(p => p.filter(x => x.id !== id));
+    toast.success("تم الإلغاء");
+  }
+
+  return (
+    <div className="space-y-6">
+      <form onSubmit={add} className="bg-card border border-border rounded-2xl p-5 shadow-soft space-y-3">
+        <div className="flex items-center gap-2 text-foreground font-bold mb-1">
+          <Plus className="w-4 h-4" /> إضافة مشرف كلية جديد
+        </div>
+        <p className="text-xs text-muted-foreground">سيتمكن المشرف من رؤية بيانات كليته فقط، ولن يرى أرقام هواتف الإناث.</p>
+        <div className="grid md:grid-cols-2 gap-3">
+          <input type="email" required dir="ltr" placeholder="البريد الإلكتروني *"
+            value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
+            className="px-4 py-2.5 rounded-xl border border-border bg-background" />
+          <select required value={form.college} onChange={e => setForm({ ...form, college: e.target.value })}
+            className="px-4 py-2.5 rounded-xl border border-border bg-background">
+            <option value="">اختر الكلية *</option>
+            {COLLEGES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select value={form.level} onChange={e => setForm({ ...form, level: e.target.value })}
+            className="px-4 py-2.5 rounded-xl border border-border bg-background md:col-span-2">
+            <option value="">المستوى (اختياري)</option>
+            {LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+          </select>
+        </div>
+        <button type="submit" disabled={adding}
+          className="bg-gradient-purple text-white font-bold px-5 py-2.5 rounded-xl shadow-glow disabled:opacity-50">
+          {adding ? "جارٍ الإضافة..." : "إضافة مشرف"}
+        </button>
+        <p className="text-xs text-muted-foreground">
+          ملاحظة: المشرف الجديد يدخل من نفس صفحة بوابة المشرفين بإيميله وأي كلمة مرور يختارها (أول دخول = إنشاء حسابه).
+        </p>
+      </form>
+
+      {loading ? <Loading /> : (
+        <>
+          <div>
+            <h3 className="font-bold text-foreground mb-2 flex items-center gap-2"><Shield className="w-4 h-4 text-primary" /> المشرفون النشطون</h3>
+            {list.length === 0 ? <Empty text="لا يوجد مشرفو كليات" /> : (
+              <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-soft overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-secondary"><tr>
+                    <th className="p-3 text-right">البريد</th><th className="p-3 text-right">الكلية</th><th className="p-3 text-right">المستوى</th><th className="p-3"></th>
+                  </tr></thead>
+                  <tbody>{list.map(a => (
+                    <tr key={a.id} className="border-t border-border">
+                      <td className="p-3" dir="ltr">{a.email}</td>
+                      <td className="p-3 font-bold">{a.college}</td>
+                      <td className="p-3">{a.level || "-"}</td>
+                      <td className="p-3"><DeleteBtn onClick={() => removeAdmin(a.id)} /></td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {invites.length > 0 && (
+            <div>
+              <h3 className="font-bold text-foreground mb-2">دعوات معلقة (لم يسجلوا الدخول بعد)</h3>
+              <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-soft overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-secondary"><tr>
+                    <th className="p-3 text-right">البريد</th><th className="p-3 text-right">الكلية</th><th className="p-3 text-right">المستوى</th><th className="p-3"></th>
+                  </tr></thead>
+                  <tbody>{invites.map(i => (
+                    <tr key={i.id} className="border-t border-border">
+                      <td className="p-3" dir="ltr">{i.email}</td>
+                      <td className="p-3 font-bold">{i.college}</td>
+                      <td className="p-3">{i.level || "-"}</td>
+                      <td className="p-3"><DeleteBtn onClick={() => removeInvite(i.id)} /></td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
 }

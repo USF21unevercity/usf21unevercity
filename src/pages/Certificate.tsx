@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Award, Send, Info } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Award, Send, Info, AlertTriangle, UserPlus } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { COLLEGES, LEVELS } from "@/lib/colleges";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { normalizeArabicName } from "@/lib/normalizeName";
 
 const TYPES = [
   "شهادة عضوية اللجنة العلمية",
@@ -14,8 +15,11 @@ const TYPES = [
 ];
 
 export default function Certificate() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({ full_name: "", college: "", level: "", specialty: "", email: "", phone: "", certificate_type: "", reason: "" });
   const [sending, setSending] = useState(false);
+  const [notMember, setNotMember] = useState(false);
+  const [duplicate, setDuplicate] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,6 +27,29 @@ export default function Certificate() {
       toast.error("يرجى تعبئة الحقول المطلوبة"); return;
     }
     setSending(true);
+    // 1) Check membership by normalized name
+    const normalized = normalizeArabicName(form.full_name);
+    const { data: member } = await supabase
+      .from("members")
+      .select("id")
+      .eq("name_normalized", normalized)
+      .maybeSingle();
+    if (!member) {
+      setSending(false);
+      setNotMember(true);
+      return;
+    }
+    // 2) Check duplicate certificate request by same name
+    const { data: existingReq } = await supabase
+      .from("certificate_requests")
+      .select("id")
+      .ilike("full_name", form.full_name.trim())
+      .maybeSingle();
+    if (existingReq) {
+      setSending(false);
+      setDuplicate(true);
+      return;
+    }
     const { error } = await supabase.from("certificate_requests").insert({
       full_name: form.full_name, college: form.college, level: form.level,
       specialty: form.specialty || null, email: form.email, phone: form.phone || null,
@@ -33,6 +60,42 @@ export default function Certificate() {
     toast.success("تم إرسال طلب الشهادة بنجاح");
     setForm({ full_name: "", college: "", level: "", specialty: "", email: "", phone: "", certificate_type: "", reason: "" });
   };
+
+  if (notMember) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center px-4 py-16">
+        <div className="bg-card border border-amber-300 rounded-3xl p-8 max-w-md w-full text-center shadow-card-elev">
+          <AlertTriangle className="w-16 h-16 text-amber-500 mx-auto mb-3" />
+          <h2 className="text-2xl font-bold mb-2 text-foreground">عزيزي الطالب/ة</h2>
+          <p className="text-muted-foreground mb-6 leading-loose">
+            أنت لست مسجلاً في قائمة أعضاء اللجنة العلمية.
+            <br />سجّل الآن وحاول مرة أخرى.
+          </p>
+          <button onClick={() => navigate("/register")}
+            className="w-full bg-gradient-purple text-white font-bold px-6 py-4 rounded-2xl shadow-glow flex items-center justify-center gap-2 mb-3">
+            <UserPlus className="w-5 h-5" /> الانتقال إلى تسجيل العضوية
+          </button>
+          <button onClick={() => setNotMember(false)} className="text-sm text-muted-foreground underline">رجوع</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (duplicate) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center px-4 py-16">
+        <div className="bg-card border border-amber-300 rounded-3xl p-8 max-w-md w-full text-center shadow-card-elev">
+          <AlertTriangle className="w-16 h-16 text-amber-500 mx-auto mb-3" />
+          <h2 className="text-2xl font-bold mb-2 text-foreground">عزيزي الطالب/ة</h2>
+          <p className="text-muted-foreground mb-6 leading-loose">
+            أنت قمت بطلب الشهادة من قبل.
+            <br />شكراً لك 🌹
+          </p>
+          <button onClick={() => setDuplicate(false)} className="bg-gradient-purple text-white font-bold px-6 py-3 rounded-xl shadow-glow">رجوع</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
