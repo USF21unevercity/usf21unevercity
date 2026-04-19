@@ -65,10 +65,6 @@ function LoginForm() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (email.trim().toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-      toast.error("هذا الإيميل غير مصرح له بالدخول");
-      return;
-    }
     setLoading(true);
     let { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     if (error && /invalid login credentials/i.test(error.message)) {
