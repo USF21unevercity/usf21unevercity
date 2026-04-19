@@ -302,7 +302,7 @@ function MembersTab({ isOwner, collegeFilter }: { isOwner: boolean; collegeFilte
                   <td className="p-3">{m.gender === "male" ? "ذكر" : "أنثى"}</td>
                   <td className="p-3">{m.phone ? <a href={`tel:${m.phone}`} className="text-primary flex items-center gap-1"><Phone className="w-3 h-3" />{m.phone}</a> : "-"}</td>
                   <td className="p-3">{m.committee_role || "-"}</td>
-                  <td className="p-3"><DeleteBtn onClick={() => onDelete(m.id, m.full_name)} /></td>
+                  <td className="p-3">{isOwner ? <DeleteBtn onClick={() => onDelete(m.id, m.full_name)} /> : null}</td>
                 </tr>
               ))}
             </tbody>
