@@ -23,11 +23,12 @@ export default function Members() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from("members")
-        .select("id, full_name, college, level, specialty, gender, phone, committee_role")
+      // Use the public view that EXCLUDES phone numbers entirely.
+      const { data } = await (supabase as any)
+        .from("members_public")
+        .select("id, full_name, college, level, specialty, gender, committee_role")
         .order("created_at", { ascending: false });
-      setMembers((data as Member[]) || []);
+      setMembers(((data as any[]) || []).map(m => ({ ...m, phone: null })) as Member[]);
       setLoading(false);
     })();
   }, []);
