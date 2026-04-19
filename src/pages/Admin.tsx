@@ -482,3 +482,130 @@ function downloadCsv(name: string, headers: string[], rows: any[][]) {
   URL.revokeObjectURL(url);
   toast.success("تم تنزيل الملف");
 }
+
+function CollegeAdminsTab() {
+  const [list, setList] = useState<any[]>([]);
+  const [invites, setInvites] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ email: "", college: "", level: "" });
+  const [adding, setAdding] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    const [a, i] = await Promise.all([
+      (supabase as any).from("college_admins").select("*").order("created_at", { ascending: false }),
+      (supabase as any).from("college_admin_invites").select("*").order("created_at", { ascending: false }),
+    ]);
+    setList(a.data || []);
+    setInvites(i.data || []);
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+
+  async function add(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.email || !form.college) { toast.error("الإيميل والكلية مطلوبان"); return; }
+    setAdding(true);
+    const { error } = await (supabase as any).from("college_admin_invites").insert({
+      email: form.email.trim().toLowerCase(),
+      college: form.college,
+      level: form.level || null,
+    });
+    setAdding(false);
+    if (error) { toast.error("فشل: " + error.message); return; }
+    toast.success("تمت إضافة المشرف. يستطيع الدخول الآن بالإيميل وكلمة المرور.");
+    setForm({ email: "", college: "", level: "" });
+    load();
+  }
+
+  async function removeInvite(id: string) {
+    if (!confirm("حذف الدعوة؟")) return;
+    await (supabase as any).from("college_admin_invites").delete().eq("id", id);
+    setInvites(p => p.filter(x => x.id !== id));
+  }
+  async function removeAdmin(id: string) {
+    if (!confirm("إلغاء صلاحيات هذا المشرف؟")) return;
+    await (supabase as any).from("college_admins").delete().eq("id", id);
+    setList(p => p.filter(x => x.id !== id));
+    toast.success("تم الإلغاء");
+  }
+
+  return (
+    <div className="space-y-6">
+      <form onSubmit={add} className="bg-card border border-border rounded-2xl p-5 shadow-soft space-y-3">
+        <div className="flex items-center gap-2 text-foreground font-bold mb-1">
+          <Plus className="w-4 h-4" /> إضافة مشرف كلية جديد
+        </div>
+        <p className="text-xs text-muted-foreground">سيتمكن المشرف من رؤية بيانات كليته فقط، ولن يرى أرقام هواتف الإناث.</p>
+        <div className="grid md:grid-cols-2 gap-3">
+          <input type="email" required dir="ltr" placeholder="البريد الإلكتروني *"
+            value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
+            className="px-4 py-2.5 rounded-xl border border-border bg-background" />
+          <select required value={form.college} onChange={e => setForm({ ...form, college: e.target.value })}
+            className="px-4 py-2.5 rounded-xl border border-border bg-background">
+            <option value="">اختر الكلية *</option>
+            {COLLEGES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select value={form.level} onChange={e => setForm({ ...form, level: e.target.value })}
+            className="px-4 py-2.5 rounded-xl border border-border bg-background md:col-span-2">
+            <option value="">المستوى (اختياري)</option>
+            {LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+          </select>
+        </div>
+        <button type="submit" disabled={adding}
+          className="bg-gradient-purple text-white font-bold px-5 py-2.5 rounded-xl shadow-glow disabled:opacity-50">
+          {adding ? "جارٍ الإضافة..." : "إضافة مشرف"}
+        </button>
+        <p className="text-xs text-muted-foreground">
+          ملاحظة: المشرف الجديد يدخل من نفس صفحة بوابة المشرفين بإيميله وأي كلمة مرور يختارها (أول دخول = إنشاء حسابه).
+        </p>
+      </form>
+
+      {loading ? <Loading /> : (
+        <>
+          <div>
+            <h3 className="font-bold text-foreground mb-2 flex items-center gap-2"><Shield className="w-4 h-4 text-primary" /> المشرفون النشطون</h3>
+            {list.length === 0 ? <Empty text="لا يوجد مشرفو كليات" /> : (
+              <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-soft overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-secondary"><tr>
+                    <th className="p-3 text-right">البريد</th><th className="p-3 text-right">الكلية</th><th className="p-3 text-right">المستوى</th><th className="p-3"></th>
+                  </tr></thead>
+                  <tbody>{list.map(a => (
+                    <tr key={a.id} className="border-t border-border">
+                      <td className="p-3" dir="ltr">{a.email}</td>
+                      <td className="p-3 font-bold">{a.college}</td>
+                      <td className="p-3">{a.level || "-"}</td>
+                      <td className="p-3"><DeleteBtn onClick={() => removeAdmin(a.id)} /></td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {invites.length > 0 && (
+            <div>
+              <h3 className="font-bold text-foreground mb-2">دعوات معلقة (لم يسجلوا الدخول بعد)</h3>
+              <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-soft overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-secondary"><tr>
+                    <th className="p-3 text-right">البريد</th><th className="p-3 text-right">الكلية</th><th className="p-3 text-right">المستوى</th><th className="p-3"></th>
+                  </tr></thead>
+                  <tbody>{invites.map(i => (
+                    <tr key={i.id} className="border-t border-border">
+                      <td className="p-3" dir="ltr">{i.email}</td>
+                      <td className="p-3 font-bold">{i.college}</td>
+                      <td className="p-3">{i.level || "-"}</td>
+                      <td className="p-3"><DeleteBtn onClick={() => removeInvite(i.id)} /></td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
