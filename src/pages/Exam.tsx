@@ -27,6 +27,7 @@ export default function ExamPage() {
   const [current, setCurrent] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [result, setResult] = useState<{ correct: number; wrong: number; pct: number } | null>(null);
+  const [feedback, setFeedback] = useState("");
   const timerRef = useRef<number | null>(null);
 
   async function startEntry(e: React.FormEvent) {
@@ -35,8 +36,16 @@ export default function ExamPage() {
     setLoading(true);
     const { data, error } = await (supabase as any).from("exams").select("*")
       .eq("access_code", code.trim()).eq("is_active", true).maybeSingle();
+    if (error || !data) { setLoading(false); toast.error("رمز الاختبار غير صحيح أو الاختبار غير متاح"); return; }
+    // Check duplicate attempt by normalized name for this exam
+    const normalized = normalizeArabicName(name.trim());
+    const { data: prev } = await (supabase as any).from("exam_attempts")
+      .select("id").eq("exam_id", data.id).eq("student_name_normalized", normalized).limit(1);
     setLoading(false);
-    if (error || !data) { toast.error("رمز الاختبار غير صحيح أو الاختبار غير متاح"); return; }
+    if (prev && prev.length > 0) {
+      toast.error("عزيزي الطالب/ة، لا يمكنك الاختبار مرة أخرى لأنك قمت بالإجابة سابقاً. شكراً لك");
+      return;
+    }
     const ex: Exam = {
       id: data.id, title: data.title, college: data.college,
       duration_minutes: data.duration_minutes,
@@ -84,7 +93,7 @@ export default function ExamPage() {
       finished_at: new Date().toISOString(),
       correct_count: correct, wrong_count: wrong,
       total_questions: exam.questions.length,
-      percentage: pct, answers,
+      percentage: pct, answers, feedback: feedback.trim() || null,
     }).eq("id", attemptId);
     setResult({ correct, wrong, pct });
     setPhase("finished");
