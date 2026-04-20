@@ -149,7 +149,7 @@ function NotAuthorized() {
 type Counts = { messages: number; certs: number; suggestions: number; library: number };
 
 function Dashboard({ isOwner, collegeFilter }: { isOwner: boolean; collegeFilter: string | null }) {
-  type TabId = "members" | "messages" | "certs" | "suggestions" | "library" | "admins" | "exams";
+  type TabId = "members" | "messages" | "certs" | "suggestions" | "library" | "admins" | "exams" | "channels";
   const [tab, setTab] = useState<TabId>("members");
   const [counts, setCounts] = useState<Counts>({ messages: 0, certs: 0, suggestions: 0, library: 0 });
 
