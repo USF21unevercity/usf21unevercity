@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
-import { Home, BookOpen, UserPlus, Users, Mail, Award, Lock, Building2, Menu, X } from "lucide-react";
+import { Home, BookOpen, UserPlus, Users, Mail, Award, Lock, Building2, Menu, X, ClipboardList } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -7,6 +7,7 @@ const links = [
   { to: "/", label: "الرئيسية", icon: Home },
   { to: "/colleges", label: "بوابة الكليات", icon: Building2 },
   { to: "/library", label: "المكتبة الرقمية", icon: BookOpen },
+  { to: "/exam", label: "الاختبار الإلكتروني", icon: ClipboardList },
   { to: "/register", label: "تسجيل العضوية", icon: UserPlus },
   { to: "/members", label: "أعضاء اللجنة", icon: Users },
   { to: "/contact", label: "تواصل معنا", icon: Mail },

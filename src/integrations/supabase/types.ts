@@ -185,6 +185,92 @@ export type Database = {
         }
         Relationships: []
       }
+      exam_attempts: {
+        Row: {
+          answers: Json | null
+          college: string | null
+          correct_count: number
+          exam_id: string
+          finished_at: string | null
+          id: string
+          percentage: number
+          started_at: string
+          student_name: string
+          total_questions: number
+          wrong_count: number
+        }
+        Insert: {
+          answers?: Json | null
+          college?: string | null
+          correct_count?: number
+          exam_id: string
+          finished_at?: string | null
+          id?: string
+          percentage?: number
+          started_at?: string
+          student_name: string
+          total_questions?: number
+          wrong_count?: number
+        }
+        Update: {
+          answers?: Json | null
+          college?: string | null
+          correct_count?: number
+          exam_id?: string
+          finished_at?: string | null
+          id?: string
+          percentage?: number
+          started_at?: string
+          student_name?: string
+          total_questions?: number
+          wrong_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_attempts_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exams: {
+        Row: {
+          access_code: string
+          college: string
+          created_at: string
+          created_by: string | null
+          duration_minutes: number
+          id: string
+          is_active: boolean
+          questions: Json
+          title: string
+        }
+        Insert: {
+          access_code: string
+          college: string
+          created_at?: string
+          created_by?: string | null
+          duration_minutes?: number
+          id?: string
+          is_active?: boolean
+          questions?: Json
+          title: string
+        }
+        Update: {
+          access_code?: string
+          college?: string
+          created_at?: string
+          created_by?: string | null
+          duration_minutes?: number
+          id?: string
+          is_active?: boolean
+          questions?: Json
+          title?: string
+        }
+        Relationships: []
+      }
       library_files: {
         Row: {
           college: string
