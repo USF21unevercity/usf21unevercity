@@ -214,6 +214,18 @@ function RunningView({ exam, answers, setAnswers, current, setCurrent, secondsLe
         </div>
       </div>
 
+      {isLast && (
+        <div className="bg-card border border-border rounded-3xl p-5 shadow-card-elev">
+          <label className="block font-bold text-foreground mb-2 flex items-center gap-2">
+            <MessageSquare className="w-4 h-4 text-primary" />
+            عزيزي الطالب/ة، ما رأيك في العمل التطوعي الذي يقوم به ملتقى الطالب الجامعي لخدمة الطلاب؟
+          </label>
+          <textarea value={feedback} onChange={(e) => setFeedback(e.target.value)} rows={3}
+            placeholder="اكتب رأيك هنا (اختياري)..."
+            className="w-full px-4 py-3 rounded-xl border border-border bg-background resize-none" />
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-2">
         <button disabled={current === 0} onClick={() => setCurrent(current - 1)}
           className="bg-secondary text-secondary-foreground font-bold px-5 py-2.5 rounded-xl disabled:opacity-40">
