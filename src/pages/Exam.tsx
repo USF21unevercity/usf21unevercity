@@ -147,7 +147,8 @@ export default function ExamPage() {
 
         {phase === "running" && exam && (
           <RunningView exam={exam} answers={answers} setAnswers={setAnswers}
-            current={current} setCurrent={setCurrent} secondsLeft={secondsLeft} fmtTime={fmtTime} onFinish={finish} />
+            current={current} setCurrent={setCurrent} secondsLeft={secondsLeft} fmtTime={fmtTime} onFinish={finish}
+            feedback={feedback} setFeedback={setFeedback} />
         )}
 
         {phase === "finished" && exam && result && (
@@ -170,7 +171,7 @@ export default function ExamPage() {
                 <div className="text-xs text-muted-foreground">النسبة المئوية</div>
               </div>
             </div>
-            <button onClick={() => { setPhase("entry"); setName(""); setCode(""); setExam(null); setResult(null); setAttemptId(null); setCurrent(0); }}
+            <button onClick={() => { setPhase("entry"); setName(""); setCode(""); setExam(null); setResult(null); setAttemptId(null); setCurrent(0); setFeedback(""); }}
               className="mt-4 bg-secondary text-secondary-foreground font-bold px-6 py-2.5 rounded-xl">العودة</button>
           </div>
         )}
