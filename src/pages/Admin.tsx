@@ -559,8 +559,8 @@ function CollegeAdminsTab() {
           className="bg-gradient-purple text-white font-bold px-5 py-2.5 rounded-xl shadow-glow disabled:opacity-50">
           {adding ? "جارٍ الإضافة..." : "إضافة مشرف"}
         </button>
-        <p className="text-xs text-muted-foreground">
-          ملاحظة: المشرف الجديد يدخل من نفس صفحة بوابة المشرفين بإيميله وأي كلمة مرور يختارها (أول دخول = إنشاء حسابه).
+        <p className="text-xs text-muted-foreground bg-secondary/40 rounded-lg p-2">
+          📌 طريقة الدخول للمشرف: يفتح صفحة "بوابة المشرفين"، يكتب البريد الإلكتروني الذي أضفته هنا + أي كلمة مرور يختارها (لا تقل عن 6 أحرف). أول دخول ينشئ حسابه تلقائياً، والمرات التالية يستخدم نفس الإيميل ونفس كلمة المرور.
         </p>
       </form>
 
