@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import type { Session } from "@supabase/supabase-js";
 import { COLLEGES, LEVELS } from "@/lib/colleges";
 import ExamsTab from "./admin/ExamsTab";
+import ChannelsTab from "./admin/ChannelsTab";
 
 const ADMIN_EMAIL = "Wjhb29ytsbvk.wo@gmail.com";
 
@@ -212,6 +213,7 @@ function Dashboard({ isOwner, collegeFilter }: { isOwner: boolean; collegeFilter
 
         {tab === "members" && <MembersTab isOwner={isOwner} collegeFilter={collegeFilter} />}
         {tab === "exams" && <ExamsTab isOwner={isOwner} collegeFilter={collegeFilter} />}
+        {tab === "channels" && <ChannelsTab collegeFilter={collegeFilter} />}
         {tab === "messages" && isOwner && <MessagesTab />}
         {tab === "certs" && isOwner && <CertsTab />}
         {tab === "suggestions" && isOwner && <SuggestionsTab />}
