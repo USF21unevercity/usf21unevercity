@@ -180,7 +180,7 @@ export default function ExamPage() {
   );
 }
 
-function RunningView({ exam, answers, setAnswers, current, setCurrent, secondsLeft, fmtTime, onFinish }: any) {
+function RunningView({ exam, answers, setAnswers, current, setCurrent, secondsLeft, fmtTime, onFinish, feedback, setFeedback }: any) {
   const q: MCQ = exam.questions[current];
   const isLast = current === exam.questions.length - 1;
   const allAnswered = useMemo(() => answers.every((a: number) => a >= 0), [answers]);
