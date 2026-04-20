@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ClipboardList, KeyRound, Play, ChevronLeft, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { ClipboardList, KeyRound, Play, ChevronLeft, Clock, CheckCircle2, XCircle, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { MCQ } from "@/lib/parseQuestions";
+import { normalizeArabicName } from "@/lib/normalizeName";
 
 type Exam = {
   id: string;
