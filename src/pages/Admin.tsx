@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Lock, LogOut, Trash2, Download, Search, Phone, Users, Mail, Award, Radio, BookOpen, Shield, Plus } from "lucide-react";
+import { Lock, LogOut, Trash2, Download, Search, Phone, Users, Mail, Award, Radio, BookOpen, Shield, Plus, ClipboardList } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Session } from "@supabase/supabase-js";
 import { COLLEGES, LEVELS } from "@/lib/colleges";
+import ExamsTab from "./admin/ExamsTab";
 
 const ADMIN_EMAIL = "Wjhb29ytsbvk.wo@gmail.com";
 
@@ -147,7 +148,7 @@ function NotAuthorized() {
 type Counts = { messages: number; certs: number; suggestions: number; library: number };
 
 function Dashboard({ isOwner, collegeFilter }: { isOwner: boolean; collegeFilter: string | null }) {
-  type TabId = "members" | "messages" | "certs" | "suggestions" | "library" | "admins";
+  type TabId = "members" | "messages" | "certs" | "suggestions" | "library" | "admins" | "exams";
   const [tab, setTab] = useState<TabId>("members");
   const [counts, setCounts] = useState<Counts>({ messages: 0, certs: 0, suggestions: 0, library: 0 });
 
@@ -166,6 +167,7 @@ function Dashboard({ isOwner, collegeFilter }: { isOwner: boolean; collegeFilter
 
   const allTabs = [
     { id: "members" as const, label: "الأعضاء", icon: Users, count: null, owner: false },
+    { id: "exams" as const, label: "الاختبارات الإلكترونية", icon: ClipboardList, count: null, owner: false },
     { id: "messages" as const, label: "الرسائل", icon: Mail, count: counts.messages, owner: true },
     { id: "certs" as const, label: "طلبات الشهادات", icon: Award, count: counts.certs, owner: true },
     { id: "suggestions" as const, label: "اقتراحات قنوات", icon: Radio, count: counts.suggestions, owner: true },
@@ -209,6 +211,7 @@ function Dashboard({ isOwner, collegeFilter }: { isOwner: boolean; collegeFilter
         </div>
 
         {tab === "members" && <MembersTab isOwner={isOwner} collegeFilter={collegeFilter} />}
+        {tab === "exams" && <ExamsTab isOwner={isOwner} collegeFilter={collegeFilter} />}
         {tab === "messages" && isOwner && <MessagesTab />}
         {tab === "certs" && isOwner && <CertsTab />}
         {tab === "suggestions" && isOwner && <SuggestionsTab />}
