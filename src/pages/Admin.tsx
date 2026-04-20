@@ -169,6 +169,7 @@ function Dashboard({ isOwner, collegeFilter }: { isOwner: boolean; collegeFilter
   const allTabs = [
     { id: "members" as const, label: "الأعضاء", icon: Users, count: null, owner: false },
     { id: "exams" as const, label: "الاختبارات الإلكترونية", icon: ClipboardList, count: null, owner: false },
+    { id: "channels" as const, label: "إضافة قنوات", icon: Radio, count: null, owner: false },
     { id: "messages" as const, label: "الرسائل", icon: Mail, count: counts.messages, owner: true },
     { id: "certs" as const, label: "طلبات الشهادات", icon: Award, count: counts.certs, owner: true },
     { id: "suggestions" as const, label: "اقتراحات قنوات", icon: Radio, count: counts.suggestions, owner: true },
