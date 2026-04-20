@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Building2, ChevronDown, ExternalLink, Search, Plus, X, AlertTriangle } from "lucide-react";
 import channelsData from "@/data/channels.json";
 import { COLLEGES, normalizeCollege, normalizeLevel, LEVELS } from "@/lib/colleges";
@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 type Channel = { url: string; name: string; officialName: string; university: string; college: string; specialty: string; level: string };
 
-const channels: Channel[] = (channelsData as Channel[]).map(c => ({
+const baseChannels: Channel[] = (channelsData as Channel[]).map(c => ({
   ...c,
   college: normalizeCollege(c.college),
   level: normalizeLevel(c.level),
@@ -17,18 +17,36 @@ export default function Colleges() {
   const [open, setOpen] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [suggestType, setSuggestType] = useState<"new" | "wrong" | null>(null);
+  const [dbChannels, setDbChannels] = useState<Channel[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await (supabase as any).from("channels").select("*");
+      const mapped: Channel[] = (data || []).map((c: any) => ({
+        url: c.channel_url,
+        name: c.channel_name,
+        officialName: c.channel_name,
+        university: "",
+        college: c.college,
+        specialty: c.specialty || c.subject || "",
+        level: c.level || "",
+      }));
+      setDbChannels(mapped);
+    })();
+  }, []);
+
+  const channels = useMemo(() => [...baseChannels, ...dbChannels], [dbChannels]);
 
   const grouped = useMemo(() => {
     const map: Record<string, Channel[]> = {};
     for (const col of COLLEGES) map[col] = [];
     for (const ch of channels) if (map[ch.college]) map[ch.college].push(ch);
-    // sort each by level
     const lvlOrder: Record<string, number> = Object.fromEntries(LEVELS.map((l, i) => [l, i]));
     for (const k of Object.keys(map)) {
       map[k].sort((a, b) => (lvlOrder[a.level] ?? 99) - (lvlOrder[b.level] ?? 99));
     }
     return map;
-  }, []);
+  }, [channels]);
 
   return (
     <div>

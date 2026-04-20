@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ClipboardList, KeyRound, Play, ChevronLeft, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { ClipboardList, KeyRound, Play, ChevronLeft, Clock, CheckCircle2, XCircle, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { MCQ } from "@/lib/parseQuestions";
+import { normalizeArabicName } from "@/lib/normalizeName";
 
 type Exam = {
   id: string;
@@ -26,6 +27,7 @@ export default function ExamPage() {
   const [current, setCurrent] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [result, setResult] = useState<{ correct: number; wrong: number; pct: number } | null>(null);
+  const [feedback, setFeedback] = useState("");
   const timerRef = useRef<number | null>(null);
 
   async function startEntry(e: React.FormEvent) {
@@ -34,8 +36,16 @@ export default function ExamPage() {
     setLoading(true);
     const { data, error } = await (supabase as any).from("exams").select("*")
       .eq("access_code", code.trim()).eq("is_active", true).maybeSingle();
+    if (error || !data) { setLoading(false); toast.error("رمز الاختبار غير صحيح أو الاختبار غير متاح"); return; }
+    // Check duplicate attempt by normalized name for this exam
+    const normalized = normalizeArabicName(name.trim());
+    const { data: prev } = await (supabase as any).from("exam_attempts")
+      .select("id").eq("exam_id", data.id).eq("student_name_normalized", normalized).limit(1);
     setLoading(false);
-    if (error || !data) { toast.error("رمز الاختبار غير صحيح أو الاختبار غير متاح"); return; }
+    if (prev && prev.length > 0) {
+      toast.error("عزيزي الطالب/ة، لا يمكنك الاختبار مرة أخرى لأنك قمت بالإجابة سابقاً. شكراً لك");
+      return;
+    }
     const ex: Exam = {
       id: data.id, title: data.title, college: data.college,
       duration_minutes: data.duration_minutes,
@@ -83,7 +93,7 @@ export default function ExamPage() {
       finished_at: new Date().toISOString(),
       correct_count: correct, wrong_count: wrong,
       total_questions: exam.questions.length,
-      percentage: pct, answers,
+      percentage: pct, answers, feedback: feedback.trim() || null,
     }).eq("id", attemptId);
     setResult({ correct, wrong, pct });
     setPhase("finished");
@@ -137,7 +147,8 @@ export default function ExamPage() {
 
         {phase === "running" && exam && (
           <RunningView exam={exam} answers={answers} setAnswers={setAnswers}
-            current={current} setCurrent={setCurrent} secondsLeft={secondsLeft} fmtTime={fmtTime} onFinish={finish} />
+            current={current} setCurrent={setCurrent} secondsLeft={secondsLeft} fmtTime={fmtTime} onFinish={finish}
+            feedback={feedback} setFeedback={setFeedback} />
         )}
 
         {phase === "finished" && exam && result && (
@@ -160,7 +171,7 @@ export default function ExamPage() {
                 <div className="text-xs text-muted-foreground">النسبة المئوية</div>
               </div>
             </div>
-            <button onClick={() => { setPhase("entry"); setName(""); setCode(""); setExam(null); setResult(null); setAttemptId(null); setCurrent(0); }}
+            <button onClick={() => { setPhase("entry"); setName(""); setCode(""); setExam(null); setResult(null); setAttemptId(null); setCurrent(0); setFeedback(""); }}
               className="mt-4 bg-secondary text-secondary-foreground font-bold px-6 py-2.5 rounded-xl">العودة</button>
           </div>
         )}
@@ -169,7 +180,7 @@ export default function ExamPage() {
   );
 }
 
-function RunningView({ exam, answers, setAnswers, current, setCurrent, secondsLeft, fmtTime, onFinish }: any) {
+function RunningView({ exam, answers, setAnswers, current, setCurrent, secondsLeft, fmtTime, onFinish, feedback, setFeedback }: any) {
   const q: MCQ = exam.questions[current];
   const isLast = current === exam.questions.length - 1;
   const allAnswered = useMemo(() => answers.every((a: number) => a >= 0), [answers]);
@@ -202,6 +213,18 @@ function RunningView({ exam, answers, setAnswers, current, setCurrent, secondsLe
           })}
         </div>
       </div>
+
+      {isLast && (
+        <div className="bg-card border border-border rounded-3xl p-5 shadow-card-elev">
+          <label className="block font-bold text-foreground mb-2 flex items-center gap-2">
+            <MessageSquare className="w-4 h-4 text-primary" />
+            عزيزي الطالب/ة، ما رأيك في العمل التطوعي الذي يقوم به ملتقى الطالب الجامعي لخدمة الطلاب؟
+          </label>
+          <textarea value={feedback} onChange={(e) => setFeedback(e.target.value)} rows={3}
+            placeholder="اكتب رأيك هنا (اختياري)..."
+            className="w-full px-4 py-3 rounded-xl border border-border bg-background resize-none" />
+        </div>
+      )}
 
       <div className="flex items-center justify-between gap-2">
         <button disabled={current === 0} onClick={() => setCurrent(current - 1)}

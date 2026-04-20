@@ -98,6 +98,42 @@ export type Database = {
         }
         Relationships: []
       }
+      channels: {
+        Row: {
+          channel_name: string
+          channel_url: string
+          college: string
+          created_at: string
+          created_by: string | null
+          id: string
+          level: string | null
+          specialty: string | null
+          subject: string | null
+        }
+        Insert: {
+          channel_name: string
+          channel_url: string
+          college: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          level?: string | null
+          specialty?: string | null
+          subject?: string | null
+        }
+        Update: {
+          channel_name?: string
+          channel_url?: string
+          college?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          level?: string | null
+          specialty?: string | null
+          subject?: string | null
+        }
+        Relationships: []
+      }
       college_admin_invites: {
         Row: {
           college: string
@@ -191,11 +227,13 @@ export type Database = {
           college: string | null
           correct_count: number
           exam_id: string
+          feedback: string | null
           finished_at: string | null
           id: string
           percentage: number
           started_at: string
           student_name: string
+          student_name_normalized: string | null
           total_questions: number
           wrong_count: number
         }
@@ -204,11 +242,13 @@ export type Database = {
           college?: string | null
           correct_count?: number
           exam_id: string
+          feedback?: string | null
           finished_at?: string | null
           id?: string
           percentage?: number
           started_at?: string
           student_name: string
+          student_name_normalized?: string | null
           total_questions?: number
           wrong_count?: number
         }
@@ -217,11 +257,13 @@ export type Database = {
           college?: string | null
           correct_count?: number
           exam_id?: string
+          feedback?: string | null
           finished_at?: string | null
           id?: string
           percentage?: number
           started_at?: string
           student_name?: string
+          student_name_normalized?: string | null
           total_questions?: number
           wrong_count?: number
         }
