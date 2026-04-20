@@ -284,11 +284,12 @@ function ExamResults({ exam, onBack }: { exam: Exam; onBack: () => void }) {
 
   function exportCsv() {
     if (items.length === 0) { toast.error("لا توجد نتائج"); return; }
-    const headers = ["الاسم الرباعي","وقت الاختبار","عدد الأسئلة","صحيح","خطأ","النسبة %"];
+    const headers = ["الاسم الرباعي","وقت الاختبار","عدد الأسئلة","صحيح","خطأ","النسبة %","التعليق"];
     const rows = items.map(i => [
       i.student_name,
       new Date(i.started_at).toLocaleString("ar"),
       i.total_questions, i.correct_count, i.wrong_count, i.percentage,
+      i.feedback || "",
     ]);
     const csv = "\uFEFF" + [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
