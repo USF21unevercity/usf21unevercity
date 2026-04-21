@@ -152,7 +152,9 @@ export default function Certificate() {
           </div>
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5">
             <div className="flex items-center gap-2 mb-2 text-blue-700"><Info className="w-5 h-5" /><h3 className="font-bold">ملاحظة مهمة</h3></div>
-            <p className="text-sm text-blue-800">سيتم إرسال الشهادة بصيغة PDF إلى بريدك الإلكتروني خلال 24-48 ساعة من مراجعة الطلب. تأكد من صحة بريدك الإلكتروني.</p>
+            <p className="text-sm text-blue-800 leading-loose">
+              عزيزي الطالب/ة، سوف يتم مراجعة طلبك من قبل إدارة اللجنة العلمية. إذا كنت من ضمن أعضاء اللجنة العلمية سيتم إرسال شهادة التقدير عبر الإيميل الخاص بك، لذلك اكتب إيميلك بشكل صحيح، فنحن غير مسؤولين إذا كان إيميلك خطأ. شكراً لك 🌹
+            </p>
           </div>
         </div>
       </section>
