@@ -22,6 +22,8 @@ export default function ChannelsTab({ collegeFilter }: { collegeFilter: string |
   const [form, setForm] = useState({ channel_name: "", channel_url: "", college: collegeFilter || "", level: "", specialty: "", subject: "" });
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Channel>>({});
 
   async function load() {
     setLoading(true);
@@ -57,6 +59,26 @@ export default function ChannelsTab({ collegeFilter }: { collegeFilter: string |
     await (supabase as any).from("channels").delete().eq("id", id);
     setItems(p => p.filter(x => x.id !== id));
     toast.success("تم الحذف");
+  }
+
+  function startEdit(c: Channel) {
+    setEditingId(c.id);
+    setEditForm({ channel_name: c.channel_name, channel_url: c.channel_url, college: c.college, level: c.level, specialty: c.specialty, subject: c.subject });
+  }
+  async function saveEdit(id: string) {
+    if (!editForm.channel_name || !editForm.channel_url || !editForm.college) { toast.error("الاسم والرابط والكلية مطلوبة"); return; }
+    const { error } = await (supabase as any).from("channels").update({
+      channel_name: (editForm.channel_name as string).trim(),
+      channel_url: (editForm.channel_url as string).trim(),
+      college: editForm.college,
+      level: editForm.level || null,
+      specialty: ((editForm.specialty as string) || "").trim() || null,
+      subject: ((editForm.subject as string) || "").trim() || null,
+    }).eq("id", id);
+    if (error) { toast.error("فشل التعديل: " + error.message); return; }
+    toast.success("تم حفظ التعديلات");
+    setEditingId(null); setEditForm({});
+    load();
   }
 
   async function onExcel(e: React.ChangeEvent<HTMLInputElement>) {
