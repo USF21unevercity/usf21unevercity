@@ -187,7 +187,29 @@ export default function ChannelsTab({ collegeFilter }: { collegeFilter: string |
               <th className="p-3 text-right">الرابط</th>
               <th className="p-3"></th>
             </tr></thead>
-            <tbody>{items.map(c => (
+            <tbody>{items.map(c => editingId === c.id ? (
+              <tr key={c.id} className="border-t border-border bg-primary/5">
+                <td className="p-2"><input value={editForm.channel_name as string || ""} onChange={e => setEditForm({ ...editForm, channel_name: e.target.value })} className="w-full px-2 py-1.5 rounded-lg border border-border bg-background" /></td>
+                <td className="p-2">
+                  <select value={editForm.college as string || ""} onChange={e => setEditForm({ ...editForm, college: e.target.value })} className="w-full px-2 py-1.5 rounded-lg border border-border bg-background">
+                    {COLLEGES.map(x => <option key={x} value={x}>{x}</option>)}
+                  </select>
+                </td>
+                <td className="p-2">
+                  <select value={editForm.level as string || ""} onChange={e => setEditForm({ ...editForm, level: e.target.value })} className="w-full px-2 py-1.5 rounded-lg border border-border bg-background">
+                    <option value="">-</option>
+                    {LEVELS.map(x => <option key={x} value={x}>{x}</option>)}
+                  </select>
+                </td>
+                <td className="p-2"><input value={editForm.specialty as string || ""} onChange={e => setEditForm({ ...editForm, specialty: e.target.value })} className="w-full px-2 py-1.5 rounded-lg border border-border bg-background" /></td>
+                <td className="p-2"><input value={editForm.subject as string || ""} onChange={e => setEditForm({ ...editForm, subject: e.target.value })} className="w-full px-2 py-1.5 rounded-lg border border-border bg-background" /></td>
+                <td className="p-2"><input dir="ltr" value={editForm.channel_url as string || ""} onChange={e => setEditForm({ ...editForm, channel_url: e.target.value })} className="w-full px-2 py-1.5 rounded-lg border border-border bg-background" /></td>
+                <td className="p-2 flex gap-1">
+                  <button onClick={() => saveEdit(c.id)} className="text-green-600 hover:bg-green-500/10 p-2 rounded-lg" title="حفظ"><Save className="w-4 h-4" /></button>
+                  <button onClick={() => { setEditingId(null); setEditForm({}); }} className="text-muted-foreground hover:bg-secondary p-2 rounded-lg" title="إلغاء"><X className="w-4 h-4" /></button>
+                </td>
+              </tr>
+            ) : (
               <tr key={c.id} className="border-t border-border hover:bg-secondary/30">
                 <td className="p-3 font-bold flex items-center gap-2"><Radio className="w-3 h-3 text-primary" />{c.channel_name}</td>
                 <td className="p-3">{c.college}</td>
@@ -195,8 +217,9 @@ export default function ChannelsTab({ collegeFilter }: { collegeFilter: string |
                 <td className="p-3">{c.specialty || "-"}</td>
                 <td className="p-3">{c.subject || "-"}</td>
                 <td className="p-3"><a href={c.channel_url} target="_blank" rel="noopener noreferrer" className="text-primary underline" dir="ltr">فتح</a></td>
-                <td className="p-3">
-                  <button onClick={() => del(c.id)} className="text-destructive hover:bg-destructive/10 p-2 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                <td className="p-3 flex gap-1">
+                  <button onClick={() => startEdit(c)} className="text-primary hover:bg-primary/10 p-2 rounded-lg" title="تعديل"><Pencil className="w-4 h-4" /></button>
+                  <button onClick={() => del(c.id)} className="text-destructive hover:bg-destructive/10 p-2 rounded-lg" title="حذف"><Trash2 className="w-4 h-4" /></button>
                 </td>
               </tr>
             ))}</tbody>
