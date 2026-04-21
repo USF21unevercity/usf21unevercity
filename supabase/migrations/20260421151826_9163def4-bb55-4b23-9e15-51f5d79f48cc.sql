@@ -1,0 +1,1 @@
+ALTER TABLE public.activities ADD COLUMN IF NOT EXISTS image_urls text[] DEFAULT '{}'::text[];
