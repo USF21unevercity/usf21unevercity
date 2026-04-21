@@ -59,12 +59,15 @@ export default function ExamPage() {
 
   async function beginExam() {
     if (!exam) return;
-    const { data, error } = await (supabase as any).from("exam_attempts").insert({
+    // Generate the attempt id client-side so we don't need SELECT permission after INSERT (RLS-safe).
+    const newId = (crypto as any).randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const { error } = await (supabase as any).from("exam_attempts").insert({
+      id: newId,
       exam_id: exam.id, student_name: name.trim(), college: exam.college,
       total_questions: exam.questions.length,
-    }).select("id").single();
-    if (error) { toast.error("تعذر بدء الاختبار"); return; }
-    setAttemptId(data.id);
+    });
+    if (error) { toast.error("تعذر بدء الاختبار: " + error.message); return; }
+    setAttemptId(newId);
     setSecondsLeft(exam.duration_minutes * 60);
     setPhase("running");
   }
