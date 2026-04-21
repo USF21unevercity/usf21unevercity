@@ -1,7 +1,8 @@
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { Home, BookOpen, UserPlus, Users, Mail, Award, Lock, Building2, Menu, X, ClipboardList, Megaphone } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 const links = [
   { to: "/", label: "الرئيسية", icon: Home },
@@ -16,9 +17,37 @@ const links = [
   { to: "/admin", label: "بوابة المشرفين", icon: Lock },
 ];
 
+const ACT_VISIT_KEY = "activities_last_visit";
+
 export default function Layout() {
   const [open, setOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
   const location = useLocation();
+
+  // Compute unread activities count vs last visit
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      const last = localStorage.getItem(ACT_VISIT_KEY);
+      const since = last || new Date(0).toISOString();
+      const { count } = await (supabase as any)
+        .from("activities")
+        .select("id", { count: "exact", head: true })
+        .gt("created_at", since);
+      if (!cancelled) setUnread(count || 0);
+    }
+    load();
+    const t = window.setInterval(load, 60000); // refresh every minute
+    return () => { cancelled = true; window.clearInterval(t); };
+  }, [location.pathname]);
+
+  // When user opens the activities page, mark as visited
+  useEffect(() => {
+    if (location.pathname === "/activities") {
+      localStorage.setItem(ACT_VISIT_KEY, new Date().toISOString());
+      setUnread(0);
+    }
+  }, [location.pathname]);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -38,19 +67,29 @@ export default function Layout() {
             {links.map(l => (
               <NavLink key={l.to} to={l.to} end={l.to === "/"}
                 className={({ isActive }) => cn(
-                  "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all",
+                  "relative flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all",
                   isActive
                     ? "bg-gradient-gold text-brand-purple-deep shadow-gold"
                     : "text-white/85 hover:text-white hover:bg-white/10"
                 )}>
                 <l.icon className="w-4 h-4" />
                 <span>{l.label}</span>
+                {l.to === "/activities" && unread > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-red-600 text-white text-[10px] font-extrabold flex items-center justify-center shadow-md">
+                    {unread > 99 ? "99+" : unread}
+                  </span>
+                )}
               </NavLink>
             ))}
           </nav>
 
-          <button onClick={() => setOpen(!open)} className="lg:hidden text-white p-2" aria-label="القائمة">
+          <button onClick={() => setOpen(!open)} className="lg:hidden text-white p-2 relative" aria-label="القائمة">
             {open ? <X /> : <Menu />}
+            {!open && unread > 0 && (
+              <span className="absolute top-0 right-0 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-extrabold flex items-center justify-center">
+                {unread > 99 ? "99+" : unread}
+              </span>
+            )}
           </button>
         </div>
 
@@ -59,11 +98,16 @@ export default function Layout() {
             {links.map(l => (
               <NavLink key={l.to} to={l.to} end={l.to === "/"} onClick={() => setOpen(false)}
                 className={({ isActive }) => cn(
-                  "flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold",
+                  "relative flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold",
                   isActive ? "bg-gradient-gold text-brand-purple-deep" : "text-white/85 bg-white/5"
                 )}>
                 <l.icon className="w-4 h-4" />
                 <span>{l.label}</span>
+                {l.to === "/activities" && unread > 0 && (
+                  <span className="ml-auto min-w-[20px] h-5 px-1 rounded-full bg-red-600 text-white text-[10px] font-extrabold flex items-center justify-center">
+                    {unread > 99 ? "99+" : unread}
+                  </span>
+                )}
               </NavLink>
             ))}
           </nav>

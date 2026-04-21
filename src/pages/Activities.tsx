@@ -12,6 +12,7 @@ type Activity = {
   title: string;
   description: string | null;
   image_url: string | null;
+  image_urls: string[] | null;
   created_at: string;
 };
 
@@ -77,9 +78,27 @@ export default function Activities() {
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map(a => (
+            {filtered.map(a => {
+              const imgs = (a.image_urls && a.image_urls.length > 0) ? a.image_urls : (a.image_url ? [a.image_url] : []);
+              return (
               <div key={a.id} className="bg-card border border-border rounded-2xl overflow-hidden shadow-soft hover:shadow-glow transition-all">
-                {a.image_url && <img src={a.image_url} alt={a.title} className="w-full h-48 object-cover" loading="lazy" />}
+                {imgs.length > 0 && (
+                  <div className="relative">
+                    <img src={imgs[0]} alt={a.title} className="w-full h-48 object-cover" loading="lazy" />
+                    {imgs.length > 1 && (
+                      <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full font-semibold">
+                        +{imgs.length - 1} صور
+                      </div>
+                    )}
+                  </div>
+                )}
+                {imgs.length > 1 && (
+                  <div className="flex gap-1 p-2 overflow-x-auto bg-muted/30">
+                    {imgs.slice(1).map((u, i) => (
+                      <img key={i} src={u} alt={`${a.title} ${i+2}`} className="w-16 h-16 object-cover rounded-lg shrink-0" loading="lazy" />
+                    ))}
+                  </div>
+                )}
                 <div className="p-5 space-y-2">
                   <h3 className="font-bold text-foreground text-lg flex items-start gap-2">
                     <Megaphone className="w-5 h-5 text-primary shrink-0 mt-0.5" />
@@ -94,7 +113,8 @@ export default function Activities() {
                   <div className="text-xs text-muted-foreground pt-1">{new Date(a.created_at).toLocaleString("ar")}</div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

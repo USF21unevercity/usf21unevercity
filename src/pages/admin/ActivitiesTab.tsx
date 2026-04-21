@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Image as ImageIcon, Send, Megaphone } from "lucide-react";
+import { Plus, Trash2, Image as ImageIcon, Send, Megaphone, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { COLLEGES, LEVELS } from "@/lib/colleges";
@@ -13,6 +13,7 @@ type Activity = {
   title: string;
   description: string | null;
   image_url: string | null;
+  image_urls: string[] | null;
   created_at: string;
 };
 
@@ -20,7 +21,8 @@ export default function ActivitiesTab({ collegeFilter }: { collegeFilter: string
   const [items, setItems] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [collegeMode, setCollegeMode] = useState<"select" | "custom">("select");
   const [form, setForm] = useState({
     college: collegeFilter || "",
     level: "",
@@ -40,33 +42,43 @@ export default function ActivitiesTab({ collegeFilter }: { collegeFilter: string
   }
   useEffect(() => { load(); }, [collegeFilter]);
 
+  function addImageFiles(files: FileList | null) {
+    if (!files) return;
+    const arr = Array.from(files);
+    setImageFiles(prev => [...prev, ...arr]);
+  }
+  function removeImageAt(i: number) {
+    setImageFiles(prev => prev.filter((_, idx) => idx !== i));
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.college || !form.title) { toast.error("الكلية وعنوان النشاط مطلوبان"); return; }
     setSubmitting(true);
-    let image_url: string | null = null;
-    if (imageFile) {
-      const ext = imageFile.name.split(".").pop() || "jpg";
+    const uploadedUrls: string[] = [];
+    for (const file of imageFiles) {
+      const ext = file.name.split(".").pop() || "jpg";
       const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("activities").upload(path, imageFile, { upsert: false });
+      const { error: upErr } = await supabase.storage.from("activities").upload(path, file, { upsert: false });
       if (upErr) { setSubmitting(false); toast.error("فشل رفع الصورة: " + upErr.message); return; }
       const { data: pub } = supabase.storage.from("activities").getPublicUrl(path);
-      image_url = pub.publicUrl;
+      uploadedUrls.push(pub.publicUrl);
     }
     const { error } = await (supabase as any).from("activities").insert({
-      college: form.college,
+      college: form.college.trim(),
       level: form.level || null,
       specialty: form.specialty.trim() || null,
       activity_type: form.activity_type.trim() || null,
       title: form.title.trim(),
       description: form.description.trim() || null,
-      image_url,
+      image_url: uploadedUrls[0] || null,
+      image_urls: uploadedUrls,
     });
     setSubmitting(false);
     if (error) { toast.error("فشل الإرسال: " + error.message); return; }
     toast.success("تم إرسال النشاط بنجاح");
     setForm({ college: collegeFilter || "", level: "", specialty: "", activity_type: "", title: "", description: "" });
-    setImageFile(null);
+    setImageFiles([]);
     load();
   }
 
@@ -87,12 +99,33 @@ export default function ActivitiesTab({ collegeFilter }: { collegeFilter: string
           <input required placeholder="عنوان النشاط *" value={form.title}
             onChange={e => setForm({ ...form, title: e.target.value })}
             className="px-4 py-2.5 rounded-xl border border-border bg-background" />
-          <select required value={form.college} disabled={!!collegeFilter}
-            onChange={e => setForm({ ...form, college: e.target.value })}
-            className="px-4 py-2.5 rounded-xl border border-border bg-background">
-            <option value="">اختر الكلية *</option>
-            {COLLEGES.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-xs">
+              <button type="button" onClick={() => setCollegeMode("select")}
+                className={`px-3 py-1 rounded-lg font-semibold ${collegeMode === "select" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>
+                اختيار من القائمة
+              </button>
+              <button type="button" onClick={() => setCollegeMode("custom")}
+                className={`px-3 py-1 rounded-lg font-semibold ${collegeMode === "custom" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>
+                كتابة يدوية (مراكز أخرى)
+              </button>
+            </div>
+            {collegeMode === "select" ? (
+              <select required value={form.college} disabled={!!collegeFilter}
+                onChange={e => setForm({ ...form, college: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-xl border border-border bg-background">
+                <option value="">اختر الكلية *</option>
+                {COLLEGES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            ) : (
+              <input required placeholder="اسم الجهة / المركز *" value={form.college}
+                onChange={e => setForm({ ...form, college: e.target.value })}
+                disabled={!!collegeFilter}
+                className="w-full px-4 py-2.5 rounded-xl border border-border bg-background" />
+            )}
+          </div>
+
           <select value={form.level} onChange={e => setForm({ ...form, level: e.target.value })}
             className="px-4 py-2.5 rounded-xl border border-border bg-background">
             <option value="">المستوى (اختياري)</option>
@@ -106,11 +139,28 @@ export default function ActivitiesTab({ collegeFilter }: { collegeFilter: string
             className="px-4 py-2.5 rounded-xl border border-border bg-background" />
           <label className="px-4 py-2.5 rounded-xl border border-border bg-background flex items-center gap-2 cursor-pointer">
             <ImageIcon className="w-4 h-4 text-primary" />
-            <span className="text-sm truncate">{imageFile ? imageFile.name : "اختر صورة النشاط (اختياري)"}</span>
-            <input type="file" accept="image/*" className="hidden"
-              onChange={e => setImageFile(e.target.files?.[0] || null)} />
+            <span className="text-sm truncate">إضافة صور للنشاط (يمكن اختيار عدة صور)</span>
+            <input type="file" accept="image/*" multiple className="hidden"
+              onChange={e => addImageFiles(e.target.files)} />
           </label>
         </div>
+
+        {imageFiles.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {imageFiles.map((f, i) => (
+              <div key={i} className="relative group">
+                <img src={URL.createObjectURL(f)} alt={f.name}
+                  className="w-20 h-20 object-cover rounded-xl border border-border" />
+                <button type="button" onClick={() => removeImageAt(i)}
+                  className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 shadow-md">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+            <div className="text-xs text-muted-foreground self-center">عدد الصور: {imageFiles.length}</div>
+          </div>
+        )}
+
         <textarea placeholder="وصف النشاط (اختياري)" value={form.description} rows={3}
           onChange={e => setForm({ ...form, description: e.target.value })}
           className="w-full px-4 py-2.5 rounded-xl border border-border bg-background resize-none" />
@@ -127,20 +177,30 @@ export default function ActivitiesTab({ collegeFilter }: { collegeFilter: string
       {loading ? <div className="text-center py-10 text-muted-foreground">جارٍ التحميل...</div> :
        items.length === 0 ? <div className="text-center py-12 bg-card border border-border rounded-2xl text-muted-foreground">لا توجد أنشطة بعد</div> : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {items.map(a => (
-            <div key={a.id} className="bg-card border border-border rounded-2xl overflow-hidden shadow-soft">
-              {a.image_url && <img src={a.image_url} alt={a.title} className="w-full h-40 object-cover" loading="lazy" />}
-              <div className="p-4 space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-bold text-foreground flex items-center gap-1"><Megaphone className="w-4 h-4 text-primary shrink-0" />{a.title}</h3>
-                  <button onClick={() => del(a.id)} className="text-destructive hover:bg-destructive/10 p-1.5 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+          {items.map(a => {
+            const imgs = (a.image_urls && a.image_urls.length > 0) ? a.image_urls : (a.image_url ? [a.image_url] : []);
+            return (
+              <div key={a.id} className="bg-card border border-border rounded-2xl overflow-hidden shadow-soft">
+                {imgs.length > 0 && (
+                  <div className="relative">
+                    <img src={imgs[0]} alt={a.title} className="w-full h-40 object-cover" loading="lazy" />
+                    {imgs.length > 1 && (
+                      <span className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded-full">+{imgs.length - 1}</span>
+                    )}
+                  </div>
+                )}
+                <div className="p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-bold text-foreground flex items-center gap-1"><Megaphone className="w-4 h-4 text-primary shrink-0" />{a.title}</h3>
+                    <button onClick={() => del(a.id)} className="text-destructive hover:bg-destructive/10 p-1.5 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                  <div className="text-xs text-muted-foreground">{a.college}{a.level && ` · ${a.level}`}{a.activity_type && ` · ${a.activity_type}`}</div>
+                  {a.description && <p className="text-sm text-foreground/80 whitespace-pre-wrap">{a.description}</p>}
+                  <div className="text-xs text-muted-foreground">{new Date(a.created_at).toLocaleString("ar")}</div>
                 </div>
-                <div className="text-xs text-muted-foreground">{a.college}{a.level && ` · ${a.level}`}{a.activity_type && ` · ${a.activity_type}`}</div>
-                {a.description && <p className="text-sm text-foreground/80 whitespace-pre-wrap">{a.description}</p>}
-                <div className="text-xs text-muted-foreground">{new Date(a.created_at).toLocaleString("ar")}</div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
