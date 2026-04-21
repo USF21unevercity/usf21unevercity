@@ -12,6 +12,7 @@ type Activity = {
   title: string;
   description: string | null;
   image_url: string | null;
+  image_urls: string[] | null;
   created_at: string;
 };
 
