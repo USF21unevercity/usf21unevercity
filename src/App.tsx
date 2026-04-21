@@ -14,6 +14,7 @@ import Contact from "./pages/Contact";
 import Certificate from "./pages/Certificate";
 import Admin from "./pages/Admin";
 import Exam from "./pages/Exam";
+import Activities from "./pages/Activities";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/certificate" element={<Certificate />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/exam" element={<Exam />} />
+            <Route path="/activities" element={<Activities />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
