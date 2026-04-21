@@ -23,12 +23,12 @@ export default function Members() {
 
   useEffect(() => {
     (async () => {
-      // Use the public view that EXCLUDES phone numbers entirely.
+      // members_public view returns phone for males only (NULL for females)
       const { data } = await (supabase as any)
         .from("members_public")
-        .select("id, full_name, college, level, specialty, gender, committee_role")
+        .select("id, full_name, college, level, specialty, gender, committee_role, phone")
         .order("created_at", { ascending: false });
-      setMembers(((data as any[]) || []).map(m => ({ ...m, phone: null })) as Member[]);
+      setMembers((data as Member[]) || []);
       setLoading(false);
     })();
   }, []);
