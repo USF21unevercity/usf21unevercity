@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      activities: {
+        Row: {
+          activity_type: string | null
+          college: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          level: string | null
+          specialty: string | null
+          title: string
+        }
+        Insert: {
+          activity_type?: string | null
+          college: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          level?: string | null
+          specialty?: string | null
+          title: string
+        }
+        Update: {
+          activity_type?: string | null
+          college?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          level?: string | null
+          specialty?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       certificate_requests: {
         Row: {
           certificate_type: string
@@ -433,6 +472,7 @@ export type Database = {
           id: string | null
           join_year: string | null
           level: string | null
+          phone: string | null
           specialty: string | null
         }
         Insert: {
@@ -444,6 +484,7 @@ export type Database = {
           id?: string | null
           join_year?: string | null
           level?: string | null
+          phone?: never
           specialty?: string | null
         }
         Update: {
@@ -455,6 +496,7 @@ export type Database = {
           id?: string | null
           join_year?: string | null
           level?: string | null
+          phone?: never
           specialty?: string | null
         }
         Relationships: []
