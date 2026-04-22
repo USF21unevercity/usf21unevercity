@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ClipboardList, KeyRound, Play, ChevronLeft, Clock, CheckCircle2, XCircle, MessageSquare } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ClipboardList, KeyRound, Play, ChevronLeft, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { MCQ } from "@/lib/parseQuestions";
-import { normalizeArabicName } from "@/lib/normalizeName";
+import { normalizeExamNameKey } from "@/lib/normalizeName";
 
 type Exam = {
   id: string;
@@ -27,8 +27,14 @@ export default function ExamPage() {
   const [current, setCurrent] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [result, setResult] = useState<{ correct: number; wrong: number; pct: number } | null>(null);
-  const [feedback, setFeedback] = useState("");
   const timerRef = useRef<number | null>(null);
+  const examRef = useRef<Exam | null>(null);
+  const attemptIdRef = useRef<string | null>(null);
+  const answersRef = useRef<number[]>([]);
+
+  useEffect(() => { examRef.current = exam; }, [exam]);
+  useEffect(() => { attemptIdRef.current = attemptId; }, [attemptId]);
+  useEffect(() => { answersRef.current = answers; }, [answers]);
 
   async function startEntry(e: React.FormEvent) {
     e.preventDefault();
@@ -38,12 +44,13 @@ export default function ExamPage() {
       .eq("access_code", code.trim()).eq("is_active", true).maybeSingle();
     if (error || !data) { setLoading(false); toast.error("رمز الاختبار غير صحيح أو الاختبار غير متاح"); return; }
     // Check duplicate attempt by normalized name for this exam
-    const normalized = normalizeArabicName(name.trim());
-    const { data: prev } = await (supabase as any).from("exam_attempts")
-      .select("id").eq("exam_id", data.id).eq("student_name_normalized", normalized).limit(1);
+    const normalizedKey = normalizeExamNameKey(name.trim());
+    const { data: prev, error: prevError } = await (supabase as any).from("exam_attempts")
+      .select("id").eq("exam_id", data.id).eq("student_name_key", normalizedKey).limit(1);
     setLoading(false);
+    if (prevError) { toast.error("تعذر التحقق من المحاولات السابقة"); return; }
     if (prev && prev.length > 0) {
-      toast.error("عزيزي الطالب/ة، لا يمكنك الاختبار مرة أخرى لأنك قمت بالإجابة سابقاً. شكراً لك");
+      toast.error("عزيزي الطالب/ة لقد اختبرت هذا الأختبار من قبل لا يمكنك الاختبار مره أخرى وشكراً");
       return;
     }
     const ex: Exam = {
@@ -57,16 +64,60 @@ export default function ExamPage() {
     setPhase("intro");
   }
 
+  const finish = useCallback(async () => {
+    const activeExam = examRef.current;
+    const activeAttemptId = attemptIdRef.current;
+    const currentAnswers = answersRef.current;
+    if (!activeExam || !activeAttemptId) return;
+    if (timerRef.current) window.clearInterval(timerRef.current);
+
+    let correct = 0;
+    for (let i = 0; i < activeExam.questions.length; i++) {
+      if (currentAnswers[i] === activeExam.questions[i].correctIndex) correct++;
+    }
+    const wrong = activeExam.questions.length - correct;
+    const pct = Math.round((correct / activeExam.questions.length) * 10000) / 100;
+
+    const { error } = await (supabase as any).rpc("complete_exam_attempt", {
+      _attempt_id: activeAttemptId,
+      _answers: currentAnswers,
+      _correct_count: correct,
+      _wrong_count: wrong,
+      _total_questions: activeExam.questions.length,
+      _percentage: pct,
+    });
+
+    if (error) {
+      toast.error("تعذر حفظ نتيجة الاختبار: " + error.message);
+      return;
+    }
+
+    setResult({ correct, wrong, pct });
+    setPhase("finished");
+  }, []);
+
   async function beginExam() {
     if (!exam) return;
-    // Generate the attempt id client-side so we don't need SELECT permission after INSERT (RLS-safe).
     const newId = (crypto as any).randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const { error } = await (supabase as any).from("exam_attempts").insert({
-      id: newId,
-      exam_id: exam.id, student_name: name.trim(), college: exam.college,
-      total_questions: exam.questions.length,
+    const { error } = await (supabase as any).rpc("start_exam_attempt", {
+      _attempt_id: newId,
+      _exam_id: exam.id,
+      _student_name: name.trim(),
+      _college: exam.college,
+      _total_questions: exam.questions.length,
     });
-    if (error) { toast.error("تعذر بدء الاختبار: " + error.message); return; }
+    if (error) {
+      if (error.message?.includes("EXAM_ALREADY_TAKEN")) {
+        toast.error("عزيزي الطالب/ة لقد اختبرت هذا الأختبار من قبل لا يمكنك الاختبار مره أخرى وشكراً");
+        return;
+      }
+      if (error.message?.includes("EXAM_NOT_ACTIVE")) {
+        toast.error("الاختبار متوقف حالياً");
+        return;
+      }
+      toast.error("تعذر بدء الاختبار: " + error.message);
+      return;
+    }
     setAttemptId(newId);
     setSecondsLeft(exam.duration_minutes * 60);
     setPhase("running");
@@ -76,31 +127,12 @@ export default function ExamPage() {
     if (phase !== "running") return;
     timerRef.current = window.setInterval(() => {
       setSecondsLeft(s => {
-        if (s <= 1) { window.clearInterval(timerRef.current!); finish(); return 0; }
+         if (s <= 1) { window.clearInterval(timerRef.current!); void finish(); return 0; }
         return s - 1;
       });
     }, 1000);
     return () => { if (timerRef.current) window.clearInterval(timerRef.current); };
-  }, [phase]);
-
-  async function finish() {
-    if (!exam || !attemptId) return;
-    if (timerRef.current) window.clearInterval(timerRef.current);
-    let correct = 0;
-    for (let i = 0; i < exam.questions.length; i++) {
-      if (answers[i] === exam.questions[i].correctIndex) correct++;
-    }
-    const wrong = exam.questions.length - correct;
-    const pct = Math.round((correct / exam.questions.length) * 10000) / 100;
-    await (supabase as any).from("exam_attempts").update({
-      finished_at: new Date().toISOString(),
-      correct_count: correct, wrong_count: wrong,
-      total_questions: exam.questions.length,
-      percentage: pct, answers, feedback: feedback.trim() || null,
-    }).eq("id", attemptId);
-    setResult({ correct, wrong, pct });
-    setPhase("finished");
-  }
+   }, [finish, phase]);
 
   const fmtTime = (s: number) => `${Math.floor(s/60).toString().padStart(2,"0")}:${(s%60).toString().padStart(2,"0")}`;
 
@@ -150,8 +182,7 @@ export default function ExamPage() {
 
         {phase === "running" && exam && (
           <RunningView exam={exam} answers={answers} setAnswers={setAnswers}
-            current={current} setCurrent={setCurrent} secondsLeft={secondsLeft} fmtTime={fmtTime} onFinish={finish}
-            feedback={feedback} setFeedback={setFeedback} />
+            current={current} setCurrent={setCurrent} secondsLeft={secondsLeft} fmtTime={fmtTime} onFinish={finish} />
         )}
 
         {phase === "finished" && exam && result && (
@@ -174,7 +205,7 @@ export default function ExamPage() {
                 <div className="text-xs text-muted-foreground">النسبة المئوية</div>
               </div>
             </div>
-            <button onClick={() => { setPhase("entry"); setName(""); setCode(""); setExam(null); setResult(null); setAttemptId(null); setCurrent(0); setFeedback(""); }}
+            <button onClick={() => { setPhase("entry"); setName(""); setCode(""); setExam(null); setResult(null); setAttemptId(null); setCurrent(0); setAnswers([]); }}
               className="mt-4 bg-secondary text-secondary-foreground font-bold px-6 py-2.5 rounded-xl">العودة</button>
           </div>
         )}
@@ -183,7 +214,7 @@ export default function ExamPage() {
   );
 }
 
-function RunningView({ exam, answers, setAnswers, current, setCurrent, secondsLeft, fmtTime, onFinish, feedback, setFeedback }: any) {
+function RunningView({ exam, answers, setAnswers, current, setCurrent, secondsLeft, fmtTime, onFinish }: any) {
   const q: MCQ = exam.questions[current];
   const isLast = current === exam.questions.length - 1;
   const allAnswered = useMemo(() => answers.every((a: number) => a >= 0), [answers]);
@@ -217,18 +248,6 @@ function RunningView({ exam, answers, setAnswers, current, setCurrent, secondsLe
         </div>
       </div>
 
-      {isLast && (
-        <div className="bg-card border border-border rounded-3xl p-5 shadow-card-elev">
-          <label className="block font-bold text-foreground mb-2 flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-primary" />
-            عزيزي الطالب/ة، ما رأيك في العمل التطوعي الذي يقوم به ملتقى الطالب الجامعي لخدمة الطلاب؟
-          </label>
-          <textarea value={feedback} onChange={(e) => setFeedback(e.target.value)} rows={3}
-            placeholder="اكتب رأيك هنا (اختياري)..."
-            className="w-full px-4 py-3 rounded-xl border border-border bg-background resize-none" />
-        </div>
-      )}
-
       <div className="flex items-center justify-between gap-2">
         <button disabled={current === 0} onClick={() => setCurrent(current - 1)}
           className="bg-secondary text-secondary-foreground font-bold px-5 py-2.5 rounded-xl disabled:opacity-40">
@@ -240,7 +259,7 @@ function RunningView({ exam, answers, setAnswers, current, setCurrent, secondsLe
             التالي <ChevronLeft className="w-4 h-4" />
           </button>
         ) : (
-          <button onClick={() => { if (!allAnswered && !confirm("لم تجب على جميع الأسئلة. هل تريد الإنهاء؟")) return; onFinish(); }}
+          <button onClick={() => { if (!allAnswered && !confirm("لم تجب على جميع الأسئلة. هل تريد الإنهاء؟")) return; void onFinish(); }}
             className="bg-red-600 hover:bg-red-700 text-white font-extrabold px-6 py-2.5 rounded-xl shadow-glow">
             إنهاء الاختبار
           </button>
