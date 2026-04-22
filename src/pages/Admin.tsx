@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Lock, LogOut, Trash2, Download, Search, Phone, Users, Mail, Award, Radio, BookOpen, Shield, Plus, ClipboardList, Megaphone } from "lucide-react";
+import { Lock, LogOut, Trash2, Download, Search, Phone, Users, Mail, Award, Radio, BookOpen, Shield, Plus, ClipboardList, Megaphone, Shield as ShieldIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Session } from "@supabase/supabase-js";
@@ -7,6 +7,7 @@ import { COLLEGES, LEVELS } from "@/lib/colleges";
 import ExamsTab from "./admin/ExamsTab";
 import ChannelsTab from "./admin/ChannelsTab";
 import ActivitiesTab from "./admin/ActivitiesTab";
+import AwarenessTab from "./admin/AwarenessTab";
 
 const ADMIN_EMAIL = "Wjhb29ytsbvk.wo@gmail.com";
 
@@ -150,7 +151,7 @@ function NotAuthorized() {
 type Counts = { messages: number; certs: number; suggestions: number; library: number };
 
 function Dashboard({ isOwner, collegeFilter }: { isOwner: boolean; collegeFilter: string | null }) {
-  type TabId = "members" | "messages" | "certs" | "suggestions" | "library" | "admins" | "exams" | "channels" | "activities";
+  type TabId = "members" | "messages" | "certs" | "suggestions" | "library" | "admins" | "exams" | "channels" | "activities" | "awareness";
   const [tab, setTab] = useState<TabId>("members");
   const [counts, setCounts] = useState<Counts>({ messages: 0, certs: 0, suggestions: 0, library: 0 });
 
@@ -172,6 +173,7 @@ function Dashboard({ isOwner, collegeFilter }: { isOwner: boolean; collegeFilter
     { id: "exams" as const, label: "الاختبارات الإلكترونية", icon: ClipboardList, count: null, owner: false },
     { id: "channels" as const, label: "إضافة قنوات", icon: Radio, count: null, owner: false },
     { id: "activities" as const, label: "إعلانات الأنشطة", icon: Megaphone, count: null, owner: false },
+    { id: "awareness" as const, label: "الحرب الناعمة", icon: ShieldIcon, count: null, owner: false },
     { id: "messages" as const, label: "الرسائل", icon: Mail, count: counts.messages, owner: true },
     { id: "certs" as const, label: "طلبات الشهادات", icon: Award, count: counts.certs, owner: true },
     { id: "suggestions" as const, label: "اقتراحات قنوات", icon: Radio, count: counts.suggestions, owner: true },
@@ -218,6 +220,7 @@ function Dashboard({ isOwner, collegeFilter }: { isOwner: boolean; collegeFilter
         {tab === "exams" && <ExamsTab isOwner={isOwner} collegeFilter={collegeFilter} />}
         {tab === "channels" && <ChannelsTab collegeFilter={collegeFilter} />}
         {tab === "activities" && <ActivitiesTab collegeFilter={collegeFilter} />}
+        {tab === "awareness" && <AwarenessTab />}
         {tab === "messages" && isOwner && <MessagesTab />}
         {tab === "certs" && isOwner && <CertsTab />}
         {tab === "suggestions" && isOwner && <SuggestionsTab />}
