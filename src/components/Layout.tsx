@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
-import { Home, BookOpen, UserPlus, Users, Mail, Award, Lock, Building2, Menu, X, ClipboardList, Megaphone } from "lucide-react";
+import { Home, BookOpen, UserPlus, Users, Mail, Award, Lock, Building2, Menu, X, ClipboardList, Megaphone, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +8,7 @@ const links = [
   { to: "/", label: "الرئيسية", icon: Home },
   { to: "/colleges", label: "بوابة الكليات", icon: Building2 },
   { to: "/library", label: "المكتبة الرقمية", icon: BookOpen },
+  { to: "/awareness", label: "الحرب الناعمة", icon: Shield },
   { to: "/activities", label: "إعلانات الأنشطة", icon: Megaphone },
   { to: "/exam", label: "الاختبار الإلكتروني", icon: ClipboardList },
   { to: "/register", label: "تسجيل العضوية", icon: UserPlus },
@@ -18,34 +19,43 @@ const links = [
 ];
 
 const ACT_VISIT_KEY = "activities_last_visit";
+const AWARE_VISIT_KEY = "awareness_last_visit";
 
 export default function Layout() {
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
+  const [unreadAware, setUnreadAware] = useState(0);
   const location = useLocation();
 
-  // Compute unread activities count vs last visit
+  // Compute unread counts vs last visits
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const last = localStorage.getItem(ACT_VISIT_KEY);
-      const since = last || new Date(0).toISOString();
-      const { count } = await (supabase as any)
-        .from("activities")
-        .select("id", { count: "exact", head: true })
-        .gt("created_at", since);
-      if (!cancelled) setUnread(count || 0);
+      const lastAct = localStorage.getItem(ACT_VISIT_KEY) || new Date(0).toISOString();
+      const lastAware = localStorage.getItem(AWARE_VISIT_KEY) || new Date(0).toISOString();
+      const [actRes, awareRes] = await Promise.all([
+        (supabase as any).from("activities").select("id", { count: "exact", head: true }).gt("created_at", lastAct),
+        (supabase as any).from("awareness_posts").select("id", { count: "exact", head: true }).gt("created_at", lastAware),
+      ]);
+      if (!cancelled) {
+        setUnread(actRes.count || 0);
+        setUnreadAware(awareRes.count || 0);
+      }
     }
     load();
-    const t = window.setInterval(load, 60000); // refresh every minute
+    const t = window.setInterval(load, 60000);
     return () => { cancelled = true; window.clearInterval(t); };
   }, [location.pathname]);
 
-  // When user opens the activities page, mark as visited
+  // Mark as visited when entering these pages
   useEffect(() => {
     if (location.pathname === "/activities") {
       localStorage.setItem(ACT_VISIT_KEY, new Date().toISOString());
       setUnread(0);
+    }
+    if (location.pathname === "/awareness") {
+      localStorage.setItem(AWARE_VISIT_KEY, new Date().toISOString());
+      setUnreadAware(0);
     }
   }, [location.pathname]);
 
