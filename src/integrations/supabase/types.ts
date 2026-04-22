@@ -56,6 +56,132 @@ export type Database = {
         }
         Relationships: []
       }
+      awareness_post_comments: {
+        Row: {
+          author_name: string | null
+          comment: string
+          created_at: string
+          id: string
+          post_id: string
+          visitor_key: string
+        }
+        Insert: {
+          author_name?: string | null
+          comment: string
+          created_at?: string
+          id?: string
+          post_id: string
+          visitor_key: string
+        }
+        Update: {
+          author_name?: string | null
+          comment?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+          visitor_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "awareness_post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "awareness_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      awareness_post_reactions: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          reaction: string
+          visitor_key: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          reaction: string
+          visitor_key: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          reaction?: string
+          visitor_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "awareness_post_reactions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "awareness_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      awareness_post_views: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          visitor_key: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          visitor_key: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          visitor_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "awareness_post_views_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "awareness_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      awareness_posts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          image_urls: string[]
+          message: string
+          target_audience: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_urls?: string[]
+          message: string
+          target_audience?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_urls?: string[]
+          message?: string
+          target_audience?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       certificate_requests: {
         Row: {
           certificate_type: string
@@ -275,6 +401,7 @@ export type Database = {
           percentage: number
           started_at: string
           student_name: string
+          student_name_key: string | null
           student_name_normalized: string | null
           total_questions: number
           wrong_count: number
@@ -290,6 +417,7 @@ export type Database = {
           percentage?: number
           started_at?: string
           student_name: string
+          student_name_key?: string | null
           student_name_normalized?: string | null
           total_questions?: number
           wrong_count?: number
@@ -305,6 +433,7 @@ export type Database = {
           percentage?: number
           started_at?: string
           student_name?: string
+          student_name_key?: string | null
           student_name_normalized?: string | null
           total_questions?: number
           wrong_count?: number
@@ -506,7 +635,22 @@ export type Database = {
       }
     }
     Functions: {
+      complete_exam_attempt: {
+        Args: {
+          _answers: Json
+          _attempt_id: string
+          _correct_count: number
+          _percentage: number
+          _total_questions: number
+          _wrong_count: number
+        }
+        Returns: undefined
+      }
       get_admin_college: { Args: { _user_id: string }; Returns: string }
+      has_attempted_exam: {
+        Args: { _exam_id: string; _student_name: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -516,6 +660,17 @@ export type Database = {
       }
       is_college_admin: { Args: { _user_id: string }; Returns: boolean }
       normalize_arabic_name: { Args: { _name: string }; Returns: string }
+      normalize_exam_name_key: { Args: { _name: string }; Returns: string }
+      start_exam_attempt: {
+        Args: {
+          _attempt_id: string
+          _college: string
+          _exam_id: string
+          _student_name: string
+          _total_questions: number
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "user"
