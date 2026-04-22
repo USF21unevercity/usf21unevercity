@@ -84,9 +84,9 @@ export default function Layout() {
                 )}>
                 <l.icon className="w-4 h-4" />
                 <span>{l.label}</span>
-                {l.to === "/activities" && unread > 0 && (
+                {((l.to === "/activities" && unread > 0) || (l.to === "/awareness" && unreadAware > 0)) && (
                   <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-red-600 text-white text-[10px] font-extrabold flex items-center justify-center shadow-md">
-                    {unread > 99 ? "99+" : unread}
+                    {(() => { const n = l.to === "/activities" ? unread : unreadAware; return n > 99 ? "99+" : n; })()}
                   </span>
                 )}
               </NavLink>
@@ -95,9 +95,9 @@ export default function Layout() {
 
           <button onClick={() => setOpen(!open)} className="lg:hidden text-white p-2 relative" aria-label="القائمة">
             {open ? <X /> : <Menu />}
-            {!open && unread > 0 && (
+            {!open && (unread + unreadAware) > 0 && (
               <span className="absolute top-0 right-0 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-extrabold flex items-center justify-center">
-                {unread > 99 ? "99+" : unread}
+                {(unread + unreadAware) > 99 ? "99+" : (unread + unreadAware)}
               </span>
             )}
           </button>
@@ -113,9 +113,9 @@ export default function Layout() {
                 )}>
                 <l.icon className="w-4 h-4" />
                 <span>{l.label}</span>
-                {l.to === "/activities" && unread > 0 && (
+                {((l.to === "/activities" && unread > 0) || (l.to === "/awareness" && unreadAware > 0)) && (
                   <span className="ml-auto min-w-[20px] h-5 px-1 rounded-full bg-red-600 text-white text-[10px] font-extrabold flex items-center justify-center">
-                    {unread > 99 ? "99+" : unread}
+                    {(() => { const n = l.to === "/activities" ? unread : unreadAware; return n > 99 ? "99+" : n; })()}
                   </span>
                 )}
               </NavLink>
