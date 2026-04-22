@@ -13,3 +13,13 @@ export function normalizeArabicName(name: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+export function normalizeExamNameKey(name: string): string {
+  const normalized = normalizeArabicName(name);
+  if (!normalized) return "";
+
+  const parts = normalized.split(" ").filter(Boolean);
+  if (parts.length <= 1) return normalized;
+
+  return `${parts[0]} ${parts[parts.length - 1]}`;
+}
