@@ -119,17 +119,52 @@ function parseBlock(lines: string[]): MCQ | null {
 // Extract text from a PDF File using pdfjs
 export async function extractPdfText(file: File): Promise<string> {
   const pdfjs: any = await import("pdfjs-dist/build/pdf.mjs");
-  // Use workerless mode for simplicity
-  pdfjs.GlobalWorkerOptions.workerSrc =
-    new URL("pdfjs-dist/build/pdf.worker.mjs", import.meta.url).toString();
   const buf = await file.arrayBuffer();
-  const pdf = await pdfjs.getDocument({ data: buf }).promise;
+  const pdf = await pdfjs.getDocument({
+    data: buf,
+    disableWorker: true,
+    useWorkerFetch: false,
+    isEvalSupported: false,
+    useSystemFonts: true,
+  }).promise;
+
   let out = "";
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    const strings = content.items.map((it: any) => it.str);
-    out += strings.join("\n") + "\n\n";
+    const items = content.items
+      .map((it: any) => ({
+        str: String(it.str || "").trim(),
+        x: Number(it.transform?.[4] || 0),
+        y: Number(it.transform?.[5] || 0),
+      }))
+      .filter((it: any) => it.str);
+
+    const lines = new Map<string, { y: number; parts: { x: number; str: string }[] }>();
+    for (const item of items) {
+      const key = String(Math.round(item.y));
+      const line = lines.get(key) || { y: item.y, parts: [] };
+      line.parts.push({ x: item.x, str: item.str });
+      lines.set(key, line);
+    }
+
+    const pageText = Array.from(lines.values())
+      .sort((a, b) => b.y - a.y)
+      .map((line) =>
+        line.parts
+          .sort((a, b) => a.x - b.x)
+          .map((part) => part.str)
+          .join(" ")
+          .replace(/\s+/g, " ")
+          .trim()
+      )
+      .filter(Boolean)
+      .join("\n");
+
+    out += pageText + "\n\n";
   }
-  return out;
+
+  const cleaned = out.replace(/\u0000/g, "").trim();
+  if (!cleaned) throw new Error("لم يتم استخراج نص من الملف");
+  return cleaned;
 }
