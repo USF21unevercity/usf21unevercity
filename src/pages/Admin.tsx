@@ -148,7 +148,7 @@ function NotAuthorized() {
   );
 }
 
-type Counts = { messages: number; certs: number; suggestions: number; library: number };
+type Counts = { messages: number; certs: number; suggestions: number; library: number; libraryPending: number };
 
 function Dashboard({ isOwner, collegeFilter }: { isOwner: boolean; collegeFilter: string | null }) {
   type TabId = "members" | "messages" | "certs" | "suggestions" | "library" | "admins" | "exams" | "channels" | "activities" | "awareness";
