@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Lock, LogOut, Trash2, Download, Search, Phone, Users, Mail, Award, Radio, BookOpen, Shield, Plus, ClipboardList, Megaphone, Shield as ShieldIcon } from "lucide-react";
+import { Lock, LogOut, Trash2, Download, Search, Phone, Users, Mail, Award, Radio, BookOpen, Shield, Plus, ClipboardList, Megaphone, Shield as ShieldIcon, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Session } from "@supabase/supabase-js";
