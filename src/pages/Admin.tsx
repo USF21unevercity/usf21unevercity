@@ -153,18 +153,19 @@ type Counts = { messages: number; certs: number; suggestions: number; library: n
 function Dashboard({ isOwner, collegeFilter }: { isOwner: boolean; collegeFilter: string | null }) {
   type TabId = "members" | "messages" | "certs" | "suggestions" | "library" | "admins" | "exams" | "channels" | "activities" | "awareness";
   const [tab, setTab] = useState<TabId>("members");
-  const [counts, setCounts] = useState<Counts>({ messages: 0, certs: 0, suggestions: 0, library: 0 });
+  const [counts, setCounts] = useState<Counts>({ messages: 0, certs: 0, suggestions: 0, library: 0, libraryPending: 0 });
 
   useEffect(() => {
     if (!isOwner) return;
     (async () => {
-      const [m, c, s, l] = await Promise.all([
+      const [m, c, s, l, lp] = await Promise.all([
         supabase.from("contact_messages").select("id", { count: "exact", head: true }),
         supabase.from("certificate_requests").select("id", { count: "exact", head: true }),
         supabase.from("channel_suggestions").select("id", { count: "exact", head: true }),
         supabase.from("library_files").select("id", { count: "exact", head: true }),
+        (supabase as any).from("library_files").select("id", { count: "exact", head: true }).eq("status", "pending"),
       ]);
-      setCounts({ messages: m.count || 0, certs: c.count || 0, suggestions: s.count || 0, library: l.count || 0 });
+      setCounts({ messages: m.count || 0, certs: c.count || 0, suggestions: s.count || 0, library: l.count || 0, libraryPending: lp.count || 0 });
     })();
   }, [tab, isOwner]);
 
