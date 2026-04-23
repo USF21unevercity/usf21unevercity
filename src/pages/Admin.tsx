@@ -432,31 +432,82 @@ function SuggestionsTab() {
 function LibraryTab() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const load = async () => { setLoading(true); const { data } = await supabase.from("library_files").select("*").order("created_at", { ascending: false }); setItems(data || []); setLoading(false); };
+  const [view, setView] = useState<"pending" | "approved">("pending");
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase.from("library_files").select("*").order("created_at", { ascending: false });
+    setItems(data || []);
+    setLoading(false);
+  };
   useEffect(() => { load(); }, []);
+
+  const approve = async (i: any) => {
+    const { error } = await (supabase as any).from("library_files").update({ status: "approved" }).eq("id", i.id);
+    if (error) { toast.error("فشل القبول"); return; }
+    toast.success("تم قبول الملف ونشره في المكتبة");
+    setItems(p => p.map(x => x.id === i.id ? { ...x, status: "approved" } : x));
+  };
+  const reject = async (i: any) => {
+    if (!confirm(`رفض وحذف "${i.title}"؟`)) return;
+    if (i.file_path) await supabase.storage.from("library").remove([i.file_path]);
+    const { error } = await supabase.from("library_files").delete().eq("id", i.id);
+    if (error) { toast.error("فشل الرفض"); return; }
+    toast.success("تم رفض الملف وحذفه");
+    setItems(p => p.filter(x => x.id !== i.id));
+  };
   const del = async (i: any) => {
     if (!confirm(`حذف "${i.title}"؟`)) return;
     if (i.file_path) await supabase.storage.from("library").remove([i.file_path]);
     await supabase.from("library_files").delete().eq("id", i.id);
     toast.success("تم الحذف"); setItems(p => p.filter(x => x.id !== i.id));
   };
-  const exp = () => downloadCsv("ملفات_المكتبة", ["العنوان","الوصف","الكلية","المستوى","النوع","الرابط","الرافع","التاريخ"], items.map(i => [i.title, i.description||"", i.college, i.level, i.file_type||"", i.file_url, i.uploader_name||"", new Date(i.created_at).toLocaleString("ar")]));
+  const exp = () => downloadCsv("ملفات_المكتبة", ["العنوان","الوصف","الكلية","المستوى","النوع","الرابط","الرافع","الحالة","التاريخ"], items.map(i => [i.title, i.description||"", i.college, i.level, i.file_type||"", i.file_url, i.uploader_name||"", i.status === "approved" ? "معتمد" : "قيد المراجعة", new Date(i.created_at).toLocaleString("ar")]));
+
+  const pending = items.filter(i => i.status !== "approved");
+  const approved = items.filter(i => i.status === "approved");
+  const visible = view === "pending" ? pending : approved;
+
   return (
     <div>
+      <div className="bg-card border border-border rounded-2xl p-2 mb-4 shadow-soft flex gap-1 overflow-x-auto">
+        <button onClick={() => setView("pending")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap ${view === "pending" ? "bg-gradient-purple text-white shadow-glow" : "text-foreground hover:bg-secondary"}`}>
+          قيد المراجعة
+          {pending.length > 0 && <span className={`text-xs px-2 py-0.5 rounded-full ${view === "pending" ? "bg-brand-gold text-brand-purple-deep" : "bg-amber-100 text-amber-700"}`}>{pending.length}</span>}
+        </button>
+        <button onClick={() => setView("approved")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap ${view === "approved" ? "bg-gradient-purple text-white shadow-glow" : "text-foreground hover:bg-secondary"}`}>
+          المعتمدة
+          <span className={`text-xs px-2 py-0.5 rounded-full ${view === "approved" ? "bg-brand-gold text-brand-purple-deep" : "bg-primary/10 text-primary"}`}>{approved.length}</span>
+        </button>
+      </div>
       <ExportBar count={items.length} onExport={exp} />
-      {loading ? <Loading /> : items.length === 0 ? <Empty text="لا توجد ملفات في المكتبة" /> : (
+      {loading ? <Loading /> : visible.length === 0 ? <Empty text={view === "pending" ? "لا توجد ملفات قيد المراجعة" : "لا توجد ملفات معتمدة"} /> : (
         <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-soft overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-secondary"><tr>
               <th className="p-3 text-right">العنوان</th><th className="p-3 text-right">الكلية</th><th className="p-3 text-right">المستوى</th>
-              <th className="p-3 text-right">الرافع</th><th className="p-3 text-right">رابط</th><th className="p-3"></th>
+              <th className="p-3 text-right">الرافع</th><th className="p-3 text-right">رابط</th><th className="p-3 text-right">الإجراء</th>
             </tr></thead>
-            <tbody>{items.map(i => (
+            <tbody>{visible.map(i => (
               <tr key={i.id} className="border-t border-border hover:bg-secondary/30">
-                <td className="p-3 font-bold">{i.title}</td><td className="p-3">{i.college}</td><td className="p-3">{i.level}</td>
+                <td className="p-3 font-bold">
+                  {i.title}
+                  {i.description && <div className="text-xs font-normal text-muted-foreground mt-1">{i.description}</div>}
+                </td>
+                <td className="p-3">{i.college}</td><td className="p-3">{i.level}</td>
                 <td className="p-3">{i.uploader_name || "-"}</td>
-                <td className="p-3"><a href={i.file_url} target="_blank" rel="noopener noreferrer" className="text-primary underline">فتح</a></td>
-                <td className="p-3"><DeleteBtn onClick={() => del(i)} /></td>
+                <td className="p-3"><a href={i.file_url} target="_blank" rel="noopener noreferrer" className="text-primary underline">فتح للمراجعة</a></td>
+                <td className="p-3">
+                  {view === "pending" ? (
+                    <div className="flex gap-2">
+                      <button onClick={() => approve(i)} className="bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-green-700">قبول</button>
+                      <button onClick={() => reject(i)} className="bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-red-700">رفض</button>
+                    </div>
+                  ) : (
+                    <DeleteBtn onClick={() => del(i)} />
+                  )}
+                </td>
               </tr>
             ))}</tbody>
           </table>
