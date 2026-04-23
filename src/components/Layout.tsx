@@ -27,6 +27,27 @@ export default function Layout() {
   const [unreadAware, setUnreadAware] = useState(0);
   const location = useLocation();
 
+  // Log a site visit per route change (with a per-tab dedupe to avoid spam)
+  useEffect(() => {
+    let visitorKey = localStorage.getItem("visitor_key");
+    if (!visitorKey) {
+      visitorKey = (crypto.randomUUID?.() || Math.random().toString(36).slice(2)) + "-" + Date.now();
+      localStorage.setItem("visitor_key", visitorKey);
+    }
+    const dedupeKey = `visit_logged_${location.pathname}`;
+    const last = Number(sessionStorage.getItem(dedupeKey) || 0);
+    const now = Date.now();
+    // Log at most once every 5 minutes per path per tab
+    if (now - last > 5 * 60 * 1000) {
+      sessionStorage.setItem(dedupeKey, String(now));
+      (supabase as any).from("site_visits").insert({
+        visitor_key: visitorKey,
+        path: location.pathname,
+        user_agent: navigator.userAgent.slice(0, 300),
+      }).then(() => {});
+    }
+  }, [location.pathname]);
+
   // Compute unread counts vs last visits
   useEffect(() => {
     let cancelled = false;
