@@ -178,7 +178,7 @@ function Dashboard({ isOwner, collegeFilter }: { isOwner: boolean; collegeFilter
     { id: "messages" as const, label: "الرسائل", icon: Mail, count: counts.messages, owner: true },
     { id: "certs" as const, label: "طلبات الشهادات", icon: Award, count: counts.certs, owner: true },
     { id: "suggestions" as const, label: "اقتراحات قنوات", icon: Radio, count: counts.suggestions, owner: true },
-    { id: "library" as const, label: "المكتبة", icon: BookOpen, count: counts.library, owner: true },
+    { id: "library" as const, label: "المكتبة", icon: BookOpen, count: counts.libraryPending, owner: true },
     { id: "admins" as const, label: "مشرفو الكليات", icon: Shield, count: null, owner: true },
   ];
   const tabs = allTabs.filter(t => isOwner || !t.owner);
