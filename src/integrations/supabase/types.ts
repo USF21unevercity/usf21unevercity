@@ -495,6 +495,7 @@ export type Database = {
           file_url: string
           id: string
           level: string
+          status: string
           title: string
           uploader_name: string | null
         }
@@ -508,6 +509,7 @@ export type Database = {
           file_url: string
           id?: string
           level: string
+          status?: string
           title: string
           uploader_name?: string | null
         }
@@ -521,6 +523,7 @@ export type Database = {
           file_url?: string
           id?: string
           level?: string
+          status?: string
           title?: string
           uploader_name?: string | null
         }
