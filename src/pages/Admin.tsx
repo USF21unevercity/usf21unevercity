@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Lock, LogOut, Trash2, Download, Search, Phone, Users, Mail, Award, Radio, BookOpen, Shield, Plus, ClipboardList, Megaphone, Shield as ShieldIcon } from "lucide-react";
+import { Lock, LogOut, Trash2, Download, Search, Phone, Users, Mail, Award, Radio, BookOpen, Shield, Plus, ClipboardList, Megaphone, Shield as ShieldIcon, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Session } from "@supabase/supabase-js";
@@ -151,7 +151,7 @@ function NotAuthorized() {
 type Counts = { messages: number; certs: number; suggestions: number; library: number; libraryPending: number };
 
 function Dashboard({ isOwner, collegeFilter }: { isOwner: boolean; collegeFilter: string | null }) {
-  type TabId = "members" | "messages" | "certs" | "suggestions" | "library" | "admins" | "exams" | "channels" | "activities" | "awareness";
+  type TabId = "members" | "messages" | "certs" | "suggestions" | "library" | "admins" | "exams" | "channels" | "activities" | "awareness" | "visits";
   const [tab, setTab] = useState<TabId>("members");
   const [counts, setCounts] = useState<Counts>({ messages: 0, certs: 0, suggestions: 0, library: 0, libraryPending: 0 });
 
@@ -180,6 +180,7 @@ function Dashboard({ isOwner, collegeFilter }: { isOwner: boolean; collegeFilter
     { id: "suggestions" as const, label: "اقتراحات قنوات", icon: Radio, count: counts.suggestions, owner: true },
     { id: "library" as const, label: "المكتبة", icon: BookOpen, count: counts.libraryPending, owner: true },
     { id: "admins" as const, label: "مشرفو الكليات", icon: Shield, count: null, owner: true },
+    { id: "visits" as const, label: "زيارات الموقع", icon: Eye, count: null, owner: true },
   ];
   const tabs = allTabs.filter(t => isOwner || !t.owner);
 
@@ -227,6 +228,7 @@ function Dashboard({ isOwner, collegeFilter }: { isOwner: boolean; collegeFilter
         {tab === "suggestions" && isOwner && <SuggestionsTab />}
         {tab === "library" && isOwner && <LibraryTab />}
         {tab === "admins" && isOwner && <CollegeAdminsTab />}
+        {tab === "visits" && isOwner && <VisitsTab />}
       </section>
     </div>
   );
@@ -670,6 +672,117 @@ function CollegeAdminsTab() {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+type Visit = { id: string; visitor_key: string; path: string | null; user_agent: string | null; created_at: string };
+
+function VisitsTab() {
+  const [items, setItems] = useState<Visit[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [days, setDays] = useState<number>(7);
+
+  async function load() {
+    setLoading(true);
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    const { data } = await (supabase as any)
+      .from("site_visits")
+      .select("*")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(1000);
+    setItems((data as Visit[]) || []);
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, [days]);
+
+  const stats = useMemo(() => {
+    const now = Date.now();
+    const visitorsAll = new Set(items.map(i => i.visitor_key));
+    const last24 = items.filter(i => now - new Date(i.created_at).getTime() < 24 * 3600 * 1000);
+    const visitors24 = new Set(last24.map(i => i.visitor_key));
+    const todayKey = new Date().toDateString();
+    const todayItems = items.filter(i => new Date(i.created_at).toDateString() === todayKey);
+    const visitorsToday = new Set(todayItems.map(i => i.visitor_key));
+    return {
+      totalVisits: items.length,
+      uniqueVisitors: visitorsAll.size,
+      visits24: last24.length,
+      visitors24: visitors24.size,
+      visitsToday: todayItems.length,
+      visitorsToday: visitorsToday.size,
+    };
+  }, [items]);
+
+  function exportExcel() {
+    downloadCsv("زيارات_الموقع",
+      ["معرف الزائر","الصفحة","المتصفح","التاريخ والوقت"],
+      items.map(v => [v.visitor_key, v.path || "-", v.user_agent || "-", new Date(v.created_at).toLocaleString("ar")])
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <StatCard label="إجمالي الزيارات" value={stats.totalVisits} hint={`خلال ${days} يوم`} />
+        <StatCard label="عدد الزوار الفريدين" value={stats.uniqueVisitors} hint={`خلال ${days} يوم`} />
+        <StatCard label="زيارات اليوم" value={stats.visitsToday} hint={`${stats.visitorsToday} زائر مختلف`} />
+        <StatCard label="آخر 24 ساعة" value={stats.visits24} hint={`${stats.visitors24} زائر مختلف`} />
+      </div>
+
+      <div className="bg-card border border-border rounded-2xl p-3 shadow-soft flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-foreground">الفترة:</span>
+          {[1, 7, 30, 90].map(d => (
+            <button key={d} onClick={() => setDays(d)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-bold ${days === d ? "bg-gradient-purple text-white" : "bg-secondary text-foreground"}`}>
+              {d === 1 ? "اليوم" : `${d} يوم`}
+            </button>
+          ))}
+        </div>
+        <button onClick={exportExcel} className="bg-gradient-gold text-brand-purple-deep font-bold px-4 py-2 rounded-xl shadow-gold flex items-center gap-2">
+          <Download className="w-4 h-4" /> تصدير ({items.length})
+        </button>
+      </div>
+
+      {loading ? <Loading /> : items.length === 0 ? <Empty text="لا توجد زيارات في هذه الفترة" /> : (
+        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-soft overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-secondary text-secondary-foreground">
+              <tr>
+                <th className="p-3 text-right">#</th>
+                <th className="p-3 text-right">معرف الزائر</th>
+                <th className="p-3 text-right">الصفحة</th>
+                <th className="p-3 text-right">التاريخ والوقت</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((v, idx) => (
+                <tr key={v.id} className="border-t border-border hover:bg-secondary/30">
+                  <td className="p-3 text-muted-foreground">{idx + 1}</td>
+                  <td className="p-3 font-mono text-xs" dir="ltr">{v.visitor_key.slice(0, 18)}…</td>
+                  <td className="p-3" dir="ltr">{v.path || "-"}</td>
+                  <td className="p-3">{new Date(v.created_at).toLocaleString("ar")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="text-xs text-muted-foreground text-center">
+        يتم احتساب الزائر الفريد بناءً على معرف فريد يُحفظ في متصفح الزائر.
+      </p>
+    </div>
+  );
+}
+
+function StatCard({ label, value, hint }: { label: string; value: number; hint?: string }) {
+  return (
+    <div className="bg-card border border-border rounded-2xl p-4 shadow-soft">
+      <div className="text-xs text-muted-foreground font-bold mb-1">{label}</div>
+      <div className="text-3xl font-extrabold text-primary">{value.toLocaleString("ar")}</div>
+      {hint && <div className="text-[11px] text-muted-foreground mt-1">{hint}</div>}
     </div>
   );
 }
