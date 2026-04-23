@@ -180,6 +180,7 @@ function Dashboard({ isOwner, collegeFilter }: { isOwner: boolean; collegeFilter
     { id: "suggestions" as const, label: "اقتراحات قنوات", icon: Radio, count: counts.suggestions, owner: true },
     { id: "library" as const, label: "المكتبة", icon: BookOpen, count: counts.libraryPending, owner: true },
     { id: "admins" as const, label: "مشرفو الكليات", icon: Shield, count: null, owner: true },
+    { id: "visits" as const, label: "زيارات الموقع", icon: Eye, count: null, owner: true },
   ];
   const tabs = allTabs.filter(t => isOwner || !t.owner);
 
