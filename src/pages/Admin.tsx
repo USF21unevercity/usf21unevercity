@@ -228,6 +228,7 @@ function Dashboard({ isOwner, collegeFilter }: { isOwner: boolean; collegeFilter
         {tab === "suggestions" && isOwner && <SuggestionsTab />}
         {tab === "library" && isOwner && <LibraryTab />}
         {tab === "admins" && isOwner && <CollegeAdminsTab />}
+        {tab === "visits" && isOwner && <VisitsTab />}
       </section>
     </div>
   );
