@@ -159,7 +159,7 @@ function UploadModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
     });
     setBusy(false);
     if (error) { toast.error("فشل الحفظ"); return; }
-    toast.success("تم رفع الملف بنجاح");
+    toast.success("تم إرسال الملف للمراجعة. سيظهر في المكتبة بعد اعتماده من قبل المشرفين.");
     onDone(); onClose();
   };
 
